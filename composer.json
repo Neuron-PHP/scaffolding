@@ -1,0 +1,36 @@
+{
+  "name": "neuron-php/scaffolding",
+  "description": "Code generators and scaffolding tools for Neuron framework",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Lee Jones",
+      "email": "lee@dragonflyrg.com"
+    }
+  ],
+  "require": {
+    "php": "^8.4",
+    "neuron-php/cli": "0.8.*",
+    "symfony/yaml": "^5.0|^6.0|^7.0",
+    "dragonmantank/cron-expression": "^3.4"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "9.*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Neuron\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "neuron": {
+      "cli-provider": "Neuron\\Scaffolding\\Provider"
+    }
+  }
+}
