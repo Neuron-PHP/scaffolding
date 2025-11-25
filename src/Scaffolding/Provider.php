@@ -52,5 +52,11 @@ class Provider
 			'mail:generate',
 			'Neuron\\Scaffolding\\Commands\\EmailCommand'
 		);
+
+		// Queue installation
+		$registry->register(
+			'queue:install',
+			'Neuron\\Scaffolding\\Commands\\Queue\\InstallCommand'
+		);
 	}
 }
