@@ -3,8 +3,8 @@
 namespace Neuron\Scaffolding\Commands\Queue;
 
 use Neuron\Cli\Commands\Command;
-use Neuron\Data\Setting\SettingManager;
-use Neuron\Data\Setting\Source\Yaml;
+use Neuron\Data\Settings\SettingManager;
+use Neuron\Data\Settings\Source\Yaml;
 use Neuron\Patterns\Registry;
 
 /**
