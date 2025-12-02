@@ -58,5 +58,11 @@ class Provider
 			'queue:install',
 			'Neuron\\Scaffolding\\Commands\\Queue\\InstallCommand'
 		);
+
+		// Full CRUD scaffold generator
+		$registry->register(
+			'scaffold:generate',
+			'Neuron\\Scaffolding\\Commands\\ScaffoldCommand'
+		);
 	}
 }
