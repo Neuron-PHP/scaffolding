@@ -1,4 +1,5 @@
 ## 0.8.7
+* Added the scaffold command.
 
 ## 0.8.6 2025-11-28
 
