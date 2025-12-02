@@ -28,6 +28,9 @@
       "Tests\\": "tests/"
     }
   },
+  "suggest": {
+    "neuron-php/mvc": "Required for migration generation in scaffold:generate command"
+  },
   "extra": {
     "neuron": {
       "cli-provider": "Neuron\\Scaffolding\\Provider"
