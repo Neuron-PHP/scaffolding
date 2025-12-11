@@ -3,6 +3,8 @@
 namespace Neuron\Scaffolding\Commands;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\System\IFileSystem;
+use Neuron\Core\System\RealFileSystem;
 
 /**
  * CLI command for generating event classes.
@@ -11,10 +13,12 @@ class EventCommand extends Command
 {
 	private string $_ProjectPath;
 	private string $_StubPath;
+	private IFileSystem $fs;
 
-	public function __construct()
+	public function __construct( ?IFileSystem $fs = null )
 	{
-		$this->_ProjectPath = getcwd();
+		$this->fs = $fs ?? new RealFileSystem();
+		$this->_ProjectPath = $this->fs->getcwd();
 		$this->_StubPath = __DIR__ . '/../Stubs';
 	}
 
@@ -132,7 +136,7 @@ class EventCommand extends Command
 		$eventFile = $eventDir . '/' . $eventName . '.php';
 
 		// Check if exists
-		if( file_exists( $eventFile ) && !$this->input->hasOption( 'force' ) )
+		if( $this->fs->fileExists( $eventFile ) && !$this->input->hasOption( 'force' ) )
 		{
 			$this->output->error( "Event already exists: {$eventFile}" );
 			$this->output->info( 'Use --force to overwrite' );
@@ -140,9 +144,9 @@ class EventCommand extends Command
 		}
 
 		// Create directory
-		if( !is_dir( $eventDir ) )
+		if( !$this->fs->isDir( $eventDir ) )
 		{
-			if( !mkdir( $eventDir, 0755, true ) )
+			if( !$this->fs->mkdir( $eventDir, 0755, true ) )
 			{
 				$this->output->error( "Could not create directory: {$eventDir}" );
 				return false;
@@ -183,7 +187,7 @@ class EventCommand extends Command
 		);
 
 		// Write file
-		if( file_put_contents( $eventFile, $content ) === false )
+		if( $this->fs->writeFile( $eventFile, $content ) === false )
 		{
 			$this->output->error( 'Could not write event file' );
 			return false;
@@ -200,11 +204,12 @@ class EventCommand extends Command
 	{
 		$stubFile = $this->_StubPath . '/' . $name;
 
-		if( !file_exists( $stubFile ) )
+		if( !$this->fs->fileExists( $stubFile ) )
 		{
 			return null;
 		}
 
-		return file_get_contents( $stubFile );
+		$result = $this->fs->readFile( $stubFile );
+		return $result === false ? null : $result;
 	}
 }

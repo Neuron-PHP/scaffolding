@@ -3,6 +3,8 @@
 namespace Neuron\Scaffolding\Commands;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\System\IFileSystem;
+use Neuron\Core\System\RealFileSystem;
 
 /**
  * CLI command for generating initializer classes.
@@ -11,10 +13,12 @@ class InitializerCommand extends Command
 {
 	private string $_ProjectPath;
 	private string $_StubPath;
+	private IFileSystem $fs;
 
-	public function __construct()
+	public function __construct( ?IFileSystem $fs = null )
 	{
-		$this->_ProjectPath = getcwd();
+		$this->fs = $fs ?? new RealFileSystem();
+		$this->_ProjectPath = $this->fs->getcwd();
 		$this->_StubPath = __DIR__ . '/../Stubs';
 	}
 
@@ -90,7 +94,7 @@ class InitializerCommand extends Command
 		$initializerFile = $initializerDir . '/' . $initializerName . '.php';
 
 		// Check if exists
-		if( file_exists( $initializerFile ) && !$this->input->hasOption( 'force' ) )
+		if( $this->fs->fileExists( $initializerFile ) && !$this->input->hasOption( 'force' ) )
 		{
 			$this->output->error( "Initializer already exists: {$initializerFile}" );
 			$this->output->info( 'Use --force to overwrite' );
@@ -98,9 +102,9 @@ class InitializerCommand extends Command
 		}
 
 		// Create directory
-		if( !is_dir( $initializerDir ) )
+		if( !$this->fs->isDir( $initializerDir ) )
 		{
-			if( !mkdir( $initializerDir, 0755, true ) )
+			if( !$this->fs->mkdir( $initializerDir, 0755, true ) )
 			{
 				$this->output->error( "Could not create directory: {$initializerDir}" );
 				return false;
@@ -123,7 +127,7 @@ class InitializerCommand extends Command
 		);
 
 		// Write file
-		if( file_put_contents( $initializerFile, $content ) === false )
+		if( $this->fs->writeFile( $initializerFile, $content ) === false )
 		{
 			$this->output->error( 'Could not write initializer file' );
 			return false;
@@ -140,11 +144,12 @@ class InitializerCommand extends Command
 	{
 		$stubFile = $this->_StubPath . '/' . $name;
 
-		if( !file_exists( $stubFile ) )
+		if( !$this->fs->fileExists( $stubFile ) )
 		{
 			return null;
 		}
 
-		return file_get_contents( $stubFile );
+		$result = $this->fs->readFile( $stubFile );
+		return $result === false ? null : $result;
 	}
 }

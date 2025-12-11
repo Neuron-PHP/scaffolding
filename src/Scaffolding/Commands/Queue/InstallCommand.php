@@ -3,6 +3,8 @@
 namespace Neuron\Scaffolding\Commands\Queue;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\System\IFileSystem;
+use Neuron\Core\System\RealFileSystem;
 use Neuron\Data\Settings\SettingManager;
 use Neuron\Data\Settings\Source\Yaml;
 use Neuron\Patterns\Registry;
@@ -15,10 +17,12 @@ use Neuron\Patterns\Registry;
 class InstallCommand extends Command
 {
 	private string $_projectPath;
+	private IFileSystem $fs;
 
-	public function __construct()
+	public function __construct( ?IFileSystem $fs = null )
 	{
-		$this->_projectPath = getcwd();
+		$this->fs = $fs ?? new RealFileSystem();
+		$this->_projectPath = $this->fs->getcwd();
 	}
 
 	/**
@@ -169,7 +173,7 @@ class InstallCommand extends Command
 		// Check for queue config
 		$configFile = $this->_projectPath . '/config/neuron.yaml';
 
-		if( !file_exists( $configFile ) )
+		if( !$this->fs->fileExists( $configFile ) )
 		{
 			return false;
 		}
@@ -198,9 +202,9 @@ class InstallCommand extends Command
 		$migrationsDir = $this->_projectPath . '/db/migrate';
 
 		// Create migrations directory if it doesn't exist
-		if( !is_dir( $migrationsDir ) )
+		if( !$this->fs->isDir( $migrationsDir ) )
 		{
-			if( !mkdir( $migrationsDir, 0755, true ) )
+			if( !$this->fs->mkdir( $migrationsDir, 0755, true ) )
 			{
 				$this->output->error( "Failed to create migrations directory!" );
 				return false;
@@ -225,7 +229,7 @@ class InstallCommand extends Command
 
 		$template = $this->getMigrationTemplate( $className );
 
-		if( file_put_contents( $filePath, $template ) === false )
+		if( $this->fs->writeFile( $filePath, $template ) === false )
 		{
 			$this->output->error( "Failed to create queue migration!" );
 			return false;
@@ -294,7 +298,7 @@ PHP;
 	{
 		$configFile = $this->_projectPath . '/config/neuron.yaml';
 
-		if( !file_exists( $configFile ) )
+		if( !$this->fs->fileExists( $configFile ) )
 		{
 			return false;
 		}
@@ -327,7 +331,7 @@ queue:
 
 YAML;
 
-			file_put_contents( $configFile, $queueConfig, FILE_APPEND );
+			$this->fs->writeFile( $configFile, $this->fs->readFile( $configFile ) . $queueConfig );
 
 			return true;
 		}

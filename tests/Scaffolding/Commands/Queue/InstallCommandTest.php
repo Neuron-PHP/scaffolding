@@ -4,18 +4,23 @@ namespace Tests\Scaffolding\Commands\Queue;
 
 use PHPUnit\Framework\TestCase;
 use Neuron\Scaffolding\Commands\Queue\InstallCommand;
+use Neuron\Core\System\MemoryFileSystem;
 
 class InstallCommandTest extends TestCase
 {
 	public function testGetNameReturnsQueueInstall(): void
 	{
-		$command = new InstallCommand();
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
 		$this->assertEquals( 'queue:install', $command->getName() );
 	}
 
 	public function testGetDescriptionReturnsString(): void
 	{
-		$command = new InstallCommand();
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
 		$description = $command->getDescription();
 
 		$this->assertIsString( $description );
@@ -25,7 +30,9 @@ class InstallCommandTest extends TestCase
 
 	public function testConfigureSetupCommandMetadata(): void
 	{
-		$command = new InstallCommand();
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
 
 		// Call configure method
 		$command->configure();
@@ -36,7 +43,9 @@ class InstallCommandTest extends TestCase
 
 	public function testCamelToSnakeConvertsCorrectly(): void
 	{
-		$command = new InstallCommand();
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
 
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
@@ -50,7 +59,9 @@ class InstallCommandTest extends TestCase
 
 	public function testGetMigrationTemplateReturnsValidPhp(): void
 	{
-		$command = new InstallCommand();
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
 
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
@@ -69,7 +80,9 @@ class InstallCommandTest extends TestCase
 
 	public function testMigrationTemplateHasRequiredTables(): void
 	{
-		$command = new InstallCommand();
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
 
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
@@ -93,9 +106,11 @@ class InstallCommandTest extends TestCase
 		$this->assertStringContainsString( 'failed_at', $result );
 	}
 
-	public function testIsAlreadyInstalledReturnsBool(): void
+	public function testIsAlreadyInstalledReturnsFalseWhenNotInstalled(): void
 	{
-		$command = new InstallCommand();
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
 
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
@@ -104,15 +119,95 @@ class InstallCommandTest extends TestCase
 
 		$result = $method->invoke( $command );
 
-		// Should return a boolean
-		$this->assertIsBool( $result );
+		// Should return false when nothing is installed
+		$this->assertFalse( $result );
 	}
 
-	public function testExecuteRequiresInteractiveInputAndMockedDependencies(): void
+	public function testGenerateMigrationCreatesNewMigration(): void
 	{
-		$this->markTestSkipped( 'Cannot test execute() as it requires interactive input and mocked CLI dependencies' );
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
 
-		// TODO: Refactor InstallCommand to accept injectable dependencies for testing
-		// This would allow testing without actual filesystem operations
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'generateMigration' );
+		$method->setAccessible( true );
+
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$result = $method->invoke( $command );
+
+		$this->assertTrue( $result );
+
+		// Verify migration file was created
+		$files = $fs->getFiles();
+		$migrationFiles = array_filter( array_keys( $files ), function( $path ) {
+			return str_contains( $path, '/db/migrate/' ) && str_contains( $path, 'create_queue_tables.php' );
+		} );
+
+		$this->assertNotEmpty( $migrationFiles, 'Migration file should be created' );
+
+		// Verify migration content
+		$migrationFile = reset( $migrationFiles );
+		$content = $files[$migrationFile];
+		$this->assertStringContainsString( 'class CreateQueueTables', $content );
+		$this->assertStringContainsString( 'AbstractMigration', $content );
+		$this->assertStringContainsString( 'jobs', $content );
+		$this->assertStringContainsString( 'failed_jobs', $content );
+	}
+
+	public function testGenerateMigrationCreatesDirectoryIfMissing(): void
+	{
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'generateMigration' );
+		$method->setAccessible( true );
+
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$result = $method->invoke( $command );
+
+		$this->assertTrue( $result );
+
+		// Verify directory was created
+		$directories = $fs->getDirectories();
+		$this->assertArrayHasKey( '/test-project/db/migrate', $directories );
+	}
+
+	public function testAddQueueConfigReturnsFalseWhenNeuronYamlMissing(): void
+	{
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'addQueueConfig' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command );
+
+		// Should return false when neuron.yaml doesn't exist
+		$this->assertFalse( $result );
+	}
+
+	public function testAddQueueConfigAppendsQueueConfiguration(): void
+	{
+		$this->markTestSkipped( 'Cannot test addQueueConfig() with MemoryFileSystem as it depends on Yaml and SettingManager libraries that require real file paths' );
+	}
+
+	public function testAddQueueConfigReturnsTrueWhenAlreadyConfigured(): void
+	{
+		$this->markTestSkipped( 'Cannot test addQueueConfig() with MemoryFileSystem as it depends on Yaml and SettingManager libraries that require real file paths' );
 	}
 }

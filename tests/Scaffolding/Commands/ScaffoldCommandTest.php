@@ -312,6 +312,81 @@ class ScaffoldCommandTest extends TestCase
 		$this->assertTrue( $options['null'] );
 	}
 
+	public function testLoadStubReturnsNullWhenFileDoesNotExist(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new ScaffoldCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'loadStub' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'nonexistent.stub' );
+
+		$this->assertNull( $result );
+	}
+
+	public function testLoadStubReturnsContentWhenFileExists(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+
+		// Set up the stub file
+		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/controller.stub';
+		$stubContent = '<?php stub content';
+		$fs->addFile( $stubPath, $stubContent );
+
+		$command = new ScaffoldCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'loadStub' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'controller.stub' );
+
+		$this->assertEquals( $stubContent, $result );
+	}
+
+	public function testReplacePlaceholdersSubstitutesVariables(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new ScaffoldCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'replacePlaceholders' );
+		$method->setAccessible( true );
+
+		$content = 'Hello {{name}}, welcome to {{place}}!';
+		$replacements = [
+			'name' => 'John',
+			'place' => 'Neuron'
+		];
+
+		$result = $method->invoke( $command, $content, $replacements );
+
+		$this->assertEquals( 'Hello John, welcome to Neuron!', $result );
+	}
+
+	public function testReplacePlaceholdersHandlesMultipleOccurrences(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new ScaffoldCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'replacePlaceholders' );
+		$method->setAccessible( true );
+
+		$content = '{{var}} and {{var}} are the same as {{var}}';
+		$replacements = ['var' => 'test'];
+
+		$result = $method->invoke( $command, $content, $replacements );
+
+		$this->assertEquals( 'test and test are the same as test', $result );
+	}
+
 	public function testExecuteRequiresInteractiveInput(): void
 	{
 		$this->markTestSkipped( 'Cannot test execute() as it requires interactive CLI input and mocked dependencies' );

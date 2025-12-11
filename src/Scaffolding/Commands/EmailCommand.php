@@ -3,6 +3,8 @@
 namespace Neuron\Scaffolding\Commands;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\System\IFileSystem;
+use Neuron\Core\System\RealFileSystem;
 
 /**
  * Generate email template files
@@ -11,10 +13,12 @@ class EmailCommand extends Command
 {
 	private string $_projectPath;
 	private string $_componentPath;
+	private IFileSystem $fs;
 
-	public function __construct()
+	public function __construct( ?IFileSystem $fs = null )
 	{
-		$this->_projectPath = getcwd();
+		$this->fs = $fs ?? new RealFileSystem();
+		$this->_projectPath = $this->fs->getcwd();
 		$this->_componentPath = dirname( dirname( dirname( dirname( dirname( __DIR__ ) ) ) ) );
 	}
 
@@ -92,9 +96,9 @@ class EmailCommand extends Command
 		$emailsDir = $this->_projectPath . '/resources/views/emails';
 
 		// Create emails directory if it doesn't exist
-		if( !is_dir( $emailsDir ) )
+		if( !$this->fs->isDir( $emailsDir ) )
 		{
-			if( !mkdir( $emailsDir, 0755, true ) )
+			if( !$this->fs->mkdir( $emailsDir, 0755, true ) )
 			{
 				$this->output->error( "Failed to create emails directory" );
 				return false;
@@ -104,7 +108,7 @@ class EmailCommand extends Command
 		$filePath = $emailsDir . '/' . $name . '.php';
 
 		// Check if file already exists
-		if( file_exists( $filePath ) )
+		if( $this->fs->fileExists( $filePath ) )
 		{
 			$this->output->error( "Template already exists: resources/views/emails/{$name}.php" );
 			return false;
@@ -113,13 +117,18 @@ class EmailCommand extends Command
 		// Load stub template
 		$stubPath = $this->_componentPath . '/src/Cms/Cli/Commands/Generate/stubs/email.stub';
 
-		if( !file_exists( $stubPath ) )
+		if( !$this->fs->fileExists( $stubPath ) )
 		{
 			$this->output->error( "Stub template not found: {$stubPath}" );
 			return false;
 		}
 
-		$content = file_get_contents( $stubPath );
+		$content = $this->fs->readFile( $stubPath );
+		if( $content === false )
+		{
+			$this->output->error( "Failed to read stub template" );
+			return false;
+		}
 
 		// Create title from name (e.g., "welcome" -> "Welcome", "password-reset" -> "Password Reset")
 		$title = ucwords( str_replace( '-', ' ', $name ) );
@@ -133,7 +142,7 @@ class EmailCommand extends Command
 		$content = $this->replacePlaceholders( $content, $replacements );
 
 		// Write the file
-		if( file_put_contents( $filePath, $content ) === false )
+		if( $this->fs->writeFile( $filePath, $content ) === false )
 		{
 			$this->output->error( "Failed to create template file" );
 			return false;

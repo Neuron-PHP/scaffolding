@@ -11,6 +11,7 @@
   ],
   "require": {
     "php": "^8.4",
+    "neuron-php/core": "0.8.*",
     "neuron-php/cli": "0.8.*",
     "symfony/yaml": "^5.0|^6.0|^7.0",
     "dragonmantank/cron-expression": "^3.4"

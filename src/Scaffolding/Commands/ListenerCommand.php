@@ -3,6 +3,8 @@
 namespace Neuron\Scaffolding\Commands;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\System\IFileSystem;
+use Neuron\Core\System\RealFileSystem;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -12,11 +14,13 @@ use Symfony\Component\Yaml\Yaml;
 class ListenerCommand extends Command
 {
 	private string $_ProjectPath;
+	private IFileSystem $fs;
 	private string $_StubPath;
 
-	public function __construct()
+	public function __construct( ?IFileSystem $fs = null )
 	{
-		$this->_ProjectPath = getcwd();
+		$this->fs = $fs ?? new RealFileSystem();
+		$this->_ProjectPath = $this->fs->getcwd();
 		$this->_StubPath = __DIR__ . '/../Stubs';
 	}
 
@@ -111,7 +115,7 @@ class ListenerCommand extends Command
 		$listenerFile = $listenerDir . '/' . $listenerName . '.php';
 
 		// Check if exists
-		if( file_exists( $listenerFile ) && !$this->input->hasOption( 'force' ) )
+		if( $this->fs->fileExists( $listenerFile ) && !$this->input->hasOption( 'force' ) )
 		{
 			$this->output->error( "Listener already exists: {$listenerFile}" );
 			$this->output->info( 'Use --force to overwrite' );
@@ -119,9 +123,9 @@ class ListenerCommand extends Command
 		}
 
 		// Create directory
-		if( !is_dir( $listenerDir ) )
+		if( !$this->fs->isDir( $listenerDir ) )
 		{
-			if( !mkdir( $listenerDir, 0755, true ) )
+			if( !$this->fs->mkdir( $listenerDir, 0755, true ) )
 			{
 				$this->output->error( "Could not create directory: {$listenerDir}" );
 				return false;
@@ -147,7 +151,7 @@ class ListenerCommand extends Command
 		);
 
 		// Write file
-		if( file_put_contents( $listenerFile, $content ) === false )
+		if( $this->fs->writeFile( $listenerFile, $content ) === false )
 		{
 			$this->output->error( 'Could not write listener file' );
 			return false;
@@ -166,9 +170,9 @@ class ListenerCommand extends Command
 		$configFile = $configPath . '/event-listeners.yaml';
 
 		// Ensure config directory exists
-		if( !is_dir( $configPath ) )
+		if( !$this->fs->isDir( $configPath ) )
 		{
-			if( !mkdir( $configPath, 0755, true ) )
+			if( !$this->fs->mkdir( $configPath, 0755, true ) )
 			{
 				$this->output->error( "Could not create config directory: {$configPath}" );
 				return false;
@@ -178,11 +182,11 @@ class ListenerCommand extends Command
 		// Load existing config or create new
 		$config = [ 'events' => [] ];
 
-		if( file_exists( $configFile ) )
+		if( $this->fs->fileExists( $configFile ) )
 		{
 			try
 			{
-				$existingConfig = Yaml::parseFile( $configFile );
+				$existingConfig = Yaml::parse( $this->fs->readFile( $configFile ) );
 				if( isset( $existingConfig['events'] ) )
 				{
 					$config = $existingConfig;
@@ -227,7 +231,7 @@ class ListenerCommand extends Command
 		try
 		{
 			$yaml = Yaml::dump( $config, 4, 2 );
-			if( file_put_contents( $configFile, $yaml ) === false )
+			if( $this->fs->writeFile( $configFile, $yaml ) === false )
 			{
 				$this->output->error( 'Could not write event-listeners.yaml' );
 				return false;
@@ -268,11 +272,12 @@ class ListenerCommand extends Command
 	{
 		$stubFile = $this->_StubPath . '/' . $name;
 
-		if( !file_exists( $stubFile ) )
+		if( !$this->fs->fileExists( $stubFile ) )
 		{
 			return null;
 		}
 
-		return file_get_contents( $stubFile );
+		$result = $this->fs->readFile( $stubFile );
+		return $result === false ? null : $result;
 	}
 }
