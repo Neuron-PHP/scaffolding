@@ -394,6 +394,378 @@ class ScaffoldCommandTest extends TestCase
 		$this->assertEquals( 'test and test are the same as test', $result );
 	}
 
+	public function testGenerateControllerSuccess(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+
+		$command = new ScaffoldCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
+		// Set up the stub file
+		$stubPath = $stubBasePath . '/controller.resource.stub';
+		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
+		$fs->addFile( $stubPath, $stubContent );
+
+		// Mock output and input
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
+		$input->method( 'hasOption' )->willReturn( false );
+
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$inputProperty = $reflection->getProperty( 'input' );
+		$inputProperty->setAccessible( true );
+		$inputProperty->setValue( $command, $input );
+
+		// Call generateController
+		$method = $reflection->getMethod( 'generateController' );
+		$method->setAccessible( true );
+
+		$info = [
+			'class' => 'PostController',
+			'namespace' => 'App\\Controllers',
+			'subNamespace' => '',
+			'isApi' => false,
+		];
+
+		$result = $method->invoke( $command, $info );
+
+		$this->assertTrue( $result );
+
+		// Verify file was created
+		$files = $fs->getFiles();
+		$this->assertArrayHasKey( '/test-project/app/Controllers/PostController.php', $files );
+	}
+
+	public function testGenerateControllerFailsWhenFileExists(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+
+		// Set up existing file
+		$fs->addDirectory( '/test-project/app/Controllers' );
+		$fs->addFile( '/test-project/app/Controllers/PostController.php', 'existing content' );
+
+		$command = new ScaffoldCommand( $fs );
+
+		// Mock output and input
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
+		$input->method( 'hasOption' )->willReturn( false );
+
+		$reflection = new \ReflectionClass( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$inputProperty = $reflection->getProperty( 'input' );
+		$inputProperty->setAccessible( true );
+		$inputProperty->setValue( $command, $input );
+
+		$method = $reflection->getMethod( 'generateController' );
+		$method->setAccessible( true );
+
+		$info = [
+			'class' => 'PostController',
+			'namespace' => 'App\\Controllers',
+			'subNamespace' => '',
+			'isApi' => false,
+		];
+
+		$result = $method->invoke( $command, $info );
+
+		$this->assertFalse( $result );
+	}
+
+	public function testGenerateViewsSuccess(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+
+		$command = new ScaffoldCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
+		// Set up view stub files
+		$fs->addFile( $stubBasePath . '/view.index.stub', '<h1>{{models}} Index</h1>' );
+		$fs->addFile( $stubBasePath . '/view.create.stub', '<h1>Create {{model}}</h1>' );
+		$fs->addFile( $stubBasePath . '/view.edit.stub', '<h1>Edit {{model}}</h1>' );
+
+		// Mock output and input
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
+		$input->method( 'hasOption' )->willReturn( false );
+
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$inputProperty = $reflection->getProperty( 'input' );
+		$inputProperty->setAccessible( true );
+		$inputProperty->setValue( $command, $input );
+
+		// Call generateViews
+		$method = $reflection->getMethod( 'generateViews' );
+		$method->setAccessible( true );
+
+		$info = [
+			'models' => 'posts',
+			'model' => 'Post',
+		];
+
+		$result = $method->invoke( $command, $info );
+
+		$this->assertTrue( $result );
+
+		// Verify files were created
+		$files = $fs->getFiles();
+		$this->assertArrayHasKey( '/test-project/resources/views/posts/index.php', $files );
+		$this->assertArrayHasKey( '/test-project/resources/views/posts/create.php', $files );
+		$this->assertArrayHasKey( '/test-project/resources/views/posts/edit.php', $files );
+	}
+
+	public function testGenerateViewsCreatesDirectoryIfMissing(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+
+		$command = new ScaffoldCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
+		// Set up view stub files
+		$fs->addFile( $stubBasePath . '/view.index.stub', '<h1>Index</h1>' );
+		$fs->addFile( $stubBasePath . '/view.create.stub', '<h1>Create</h1>' );
+		$fs->addFile( $stubBasePath . '/view.edit.stub', '<h1>Edit</h1>' );
+
+		// Mock output and input
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
+		$input->method( 'hasOption' )->willReturn( false );
+
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$inputProperty = $reflection->getProperty( 'input' );
+		$inputProperty->setAccessible( true );
+		$inputProperty->setValue( $command, $input );
+
+		// Call generateViews
+		$method = $reflection->getMethod( 'generateViews' );
+		$method->setAccessible( true );
+
+		$info = [
+			'models' => 'posts',
+			'model' => 'Post',
+		];
+
+		$result = $method->invoke( $command, $info );
+
+		$this->assertTrue( $result );
+
+		// Verify directory was created
+		$directories = $fs->getDirectories();
+		$this->assertArrayHasKey( '/test-project/resources/views/posts', $directories );
+	}
+
+	public function testGenerateRoutesCreatesNewFile(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+
+		$command = new ScaffoldCommand( $fs );
+
+		// Mock output and input
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
+		$input->method( 'hasOption' )->willReturn( false );
+
+		$reflection = new \ReflectionClass( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$inputProperty = $reflection->getProperty( 'input' );
+		$inputProperty->setAccessible( true );
+		$inputProperty->setValue( $command, $input );
+
+		// Call generateRoutes
+		$method = $reflection->getMethod( 'generateRoutes' );
+		$method->setAccessible( true );
+
+		$info = [
+			'class' => 'PostController',
+			'namespace' => 'App\\Controllers',
+			'subNamespace' => '',
+			'controllerPath' => 'Posts',
+			'routePrefix' => '/posts',
+			'isApi' => false,
+		];
+
+		$result = $method->invoke( $command, $info );
+
+		$this->assertTrue( $result );
+
+		// Verify file was created
+		$files = $fs->getFiles();
+		$this->assertArrayHasKey( '/test-project/config/routes.yaml', $files );
+
+		// Verify routes content
+		$content = $files['/test-project/config/routes.yaml'];
+		$this->assertStringContainsString( 'posts_index', $content );
+		$this->assertStringContainsString( 'posts_create', $content );
+		$this->assertStringContainsString( 'posts_store', $content );
+	}
+
+	public function testGenerateRoutesAddsShowRouteForApi(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+
+		$command = new ScaffoldCommand( $fs );
+
+		// Mock output and input
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
+		$input->method( 'hasOption' )->willReturn( false );
+
+		$reflection = new \ReflectionClass( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$inputProperty = $reflection->getProperty( 'input' );
+		$inputProperty->setAccessible( true );
+		$inputProperty->setValue( $command, $input );
+
+		// Call generateRoutes with API flag
+		$method = $reflection->getMethod( 'generateRoutes' );
+		$method->setAccessible( true );
+
+		$info = [
+			'class' => 'PostController',
+			'namespace' => 'App\\Controllers',
+			'subNamespace' => '',
+			'controllerPath' => 'Posts',
+			'routePrefix' => '/posts',
+			'isApi' => true,
+		];
+
+		$result = $method->invoke( $command, $info );
+
+		$this->assertTrue( $result );
+
+		// Verify show route was added for API
+		$content = $fs->readFile( '/test-project/config/routes.yaml' );
+		$this->assertStringContainsString( 'posts_show', $content );
+		$this->assertStringContainsString( '@show', $content );
+	}
+
+	public function testFindConfigPathFindsConfigDirectory(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project/app' );
+
+		// Create config directory at project root
+		$fs->addDirectory( '/test-project/config' );
+
+		$command = new ScaffoldCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'findConfigPath' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command );
+
+		$this->assertEquals( '/test-project/config', $result );
+	}
+
+	public function testFindConfigPathReturnsNullWhenNotFound(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project/app' );
+
+		// Don't create config directory
+
+		$command = new ScaffoldCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'findConfigPath' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command );
+
+		$this->assertNull( $result );
+	}
+
+	public function testGenerateMigrationTemplateWithFields(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new ScaffoldCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'generateMigrationTemplate' );
+		$method->setAccessible( true );
+
+		$info = [
+			'tableName' => 'posts',
+		];
+
+		$fieldsString = 'title:string,body:text,published:boolean';
+
+		$result = $method->invoke( $command, $info, $fieldsString );
+
+		$this->assertIsString( $result );
+		$this->assertStringContainsString( 'posts', $result );
+		$this->assertStringContainsString( 'title', $result );
+		$this->assertStringContainsString( 'body', $result );
+		$this->assertStringContainsString( 'published', $result );
+		$this->assertStringContainsString( 'string', $result );
+		$this->assertStringContainsString( 'text', $result );
+		$this->assertStringContainsString( 'boolean', $result );
+	}
+
+	public function testGenerateMigrationTemplateWithoutFields(): void
+	{
+		$fs = new \Neuron\Core\System\MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new ScaffoldCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'generateMigrationTemplate' );
+		$method->setAccessible( true );
+
+		$info = [
+			'tableName' => 'posts',
+		];
+
+		$fieldsString = '';
+
+		$result = $method->invoke( $command, $info, $fieldsString );
+
+		$this->assertIsString( $result );
+		$this->assertStringContainsString( 'posts', $result );
+		$this->assertStringContainsString( '// Add your columns here', $result );
+	}
+
 	public function testExecuteRequiresInteractiveInput(): void
 	{
 		$this->markTestSkipped( 'Cannot test execute() as it requires interactive CLI input and mocked dependencies' );

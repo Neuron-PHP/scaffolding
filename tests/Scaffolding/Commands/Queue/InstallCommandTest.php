@@ -201,6 +201,149 @@ class InstallCommandTest extends TestCase
 		$this->assertFalse( $result );
 	}
 
+	public function testGenerateMigrationReturnsTrueWhenMigrationAlreadyExists(): void
+	{
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+
+		// Create migration directory and existing migration
+		$fs->addDirectory( '/test-project/db/migrate' );
+		$fs->addFile( '/test-project/db/migrate/20250101000000_create_queue_tables.php', '<?php' );
+
+		$command = new InstallCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'generateMigration' );
+		$method->setAccessible( true );
+
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$result = $method->invoke( $command );
+
+		// Should return true even though migration exists
+		$this->assertTrue( $result );
+	}
+
+	public function testIsAlreadyInstalledReturnsFalseWhenMigrationExistsButConfigMissing(): void
+	{
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+
+		// Create migration but not config
+		$fs->addDirectory( '/test-project/db/migrate' );
+		$fs->addFile( '/test-project/db/migrate/20250101000000_create_queue_tables.php', '<?php' );
+
+		$command = new InstallCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'isAlreadyInstalled' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command );
+
+		// Should return false because config is missing
+		$this->assertFalse( $result );
+	}
+
+	public function testMigrationFileHasCorrectStructure(): void
+	{
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'getMigrationTemplate' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'TestClassName' );
+
+		// Verify it's valid PHP
+		$this->assertStringStartsWith( '<?php', $result );
+
+		// Verify class structure
+		$this->assertStringContainsString( 'class TestClassName extends AbstractMigration', $result );
+		$this->assertStringContainsString( 'public function change()', $result );
+
+		// Verify both tables are created
+		$this->assertMatchesRegularExpression( '/\$this->table\(\s*[\'"]jobs[\'"]\s*,/', $result );
+		$this->assertMatchesRegularExpression( '/\$this->table\(\s*[\'"]failed_jobs[\'"]\s*,/', $result );
+	}
+
+	public function testMigrationTemplateHasProperIndexes(): void
+	{
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'getMigrationTemplate' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'CreateQueueTables' );
+
+		// Verify jobs table indexes
+		$this->assertStringContainsString( "->addIndex( [ 'queue' ] )", $result );
+		$this->assertStringContainsString( "->addIndex( [ 'available_at' ] )", $result );
+		$this->assertStringContainsString( "->addIndex( [ 'reserved_at' ] )", $result );
+
+		// Verify failed_jobs table indexes
+		$this->assertStringContainsString( "->addIndex( [ 'failed_at' ] )", $result );
+	}
+
+	public function testGenerateMigrationUsesCorrectTimestampFormat(): void
+	{
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'generateMigration' );
+		$method->setAccessible( true );
+
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$result = $method->invoke( $command );
+
+		$this->assertTrue( $result );
+
+		// Get created file
+		$files = $fs->getFiles();
+		$migrationFiles = array_filter( array_keys( $files ), function( $path ) {
+			return str_contains( $path, '/db/migrate/' ) && str_contains( $path, 'create_queue_tables.php' );
+		} );
+
+		$this->assertNotEmpty( $migrationFiles );
+
+		// Verify filename format: YYYYMMDDHHMMSS_create_queue_tables.php
+		$filename = basename( reset( $migrationFiles ) );
+		$this->assertMatchesRegularExpression( '/^\d{14}_create_queue_tables\.php$/', $filename );
+	}
+
+	public function testCamelToSnakeHandlesEdgeCases(): void
+	{
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new InstallCommand( $fs );
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'camelToSnake' );
+		$method->setAccessible( true );
+
+		// Test various cases
+		$this->assertEquals( 'a_b_c', $method->invoke( $command, 'ABC' ) );
+		$this->assertEquals( 'test', $method->invoke( $command, 'Test' ) );
+		$this->assertEquals( 'my_long_class_name', $method->invoke( $command, 'MyLongClassName' ) );
+		$this->assertEquals( 'h_t_t_p_request', $method->invoke( $command, 'HTTPRequest' ) );
+	}
+
 	public function testAddQueueConfigAppendsQueueConfiguration(): void
 	{
 		$this->markTestSkipped( 'Cannot test addQueueConfig() with MemoryFileSystem as it depends on Yaml and SettingManager libraries that require real file paths' );
