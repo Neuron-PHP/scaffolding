@@ -5,6 +5,8 @@ namespace Neuron\Scaffolding\Commands;
 use Neuron\Cli\Commands\Command;
 use Neuron\Core\System\IFileSystem;
 use Neuron\Core\System\RealFileSystem;
+use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Services\FileTemplateEngine;
 use Symfony\Component\Yaml\Yaml;
 use Cron\CronExpression;
 
@@ -15,14 +17,21 @@ use Cron\CronExpression;
 class JobCommand extends Command
 {
 	private string $_ProjectPath;
-	private string $_StubPath;
 	private IFileSystem $fs;
+	private ITemplateEngine $templates;
 
-	public function __construct( ?IFileSystem $fs = null )
+	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
 		$this->fs = $fs ?? new RealFileSystem();
 		$this->_ProjectPath = $this->fs->getcwd();
-		$this->_StubPath = __DIR__ . '/../Stubs';
+
+		// Default to FileTemplateEngine if not provided
+		if( $templates === null )
+		{
+			$stubPath = __DIR__ . '/../Stubs';
+			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+		}
+		$this->templates = $templates;
 	}
 
 	/**
@@ -173,9 +182,8 @@ class JobCommand extends Command
 			}
 		}
 
-		// Load stub
-		$stub = $this->loadStub( 'job.stub' );
-		if( !$stub )
+		// Load stub and replace placeholders
+		if( !$this->templates->exists( 'job.stub' ) )
 		{
 			$this->output->error( 'Could not load job stub' );
 			return false;
@@ -184,12 +192,12 @@ class JobCommand extends Command
 		// Generate snake_case job name
 		$jobNameSnake = $this->toSnakeCase( $jobName );
 
-		// Replace placeholders
-		$content = str_replace(
-			[ '{{namespace}}', '{{class}}', '{{jobName}}' ],
-			[ $namespace, $jobName, $jobNameSnake ],
-			$stub
-		);
+		// Render template
+		$content = $this->templates->render( 'job.stub', [
+			'namespace' => $namespace,
+			'class' => $jobName,
+			'jobName' => $jobNameSnake
+		] );
 
 		// Write file
 		if( $this->fs->writeFile( $jobFile, $content ) === false )
@@ -294,21 +302,5 @@ class JobCommand extends Command
 		// Insert underscores before uppercase letters and convert to lowercase
 		$snake = preg_replace( '/(?<!^)[A-Z]/', '_$0', $string );
 		return strtolower( $snake ?? '' );
-	}
-
-	/**
-	 * Load a stub file
-	 */
-	private function loadStub( string $name ): ?string
-	{
-		$stubFile = $this->_StubPath . '/' . $name;
-
-		if( !$this->fs->fileExists( $stubFile ) )
-		{
-			return null;
-		}
-
-		$result = $this->fs->readFile( $stubFile );
-		return $result === false ? null : $result;
 	}
 }

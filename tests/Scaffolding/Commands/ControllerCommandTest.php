@@ -5,6 +5,7 @@ namespace Tests\Scaffolding\Commands;
 use PHPUnit\Framework\TestCase;
 use Neuron\Scaffolding\Commands\ControllerCommand;
 use Neuron\Core\System\MemoryFileSystem;
+use Neuron\Scaffolding\Testing\MemoryTemplateEngine;
 
 class ControllerCommandTest extends TestCase
 {
@@ -12,7 +13,8 @@ class ControllerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 		$this->assertEquals( 'controller:generate', $command->getName() );
 	}
 
@@ -20,7 +22,8 @@ class ControllerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 		$description = $command->getDescription();
 
 		$this->assertIsString( $description );
@@ -32,7 +35,8 @@ class ControllerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Call configure method
 		$command->configure();
@@ -45,7 +49,8 @@ class ControllerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
@@ -66,7 +71,8 @@ class ControllerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
@@ -86,7 +92,8 @@ class ControllerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
@@ -103,7 +110,8 @@ class ControllerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
@@ -120,7 +128,8 @@ class ControllerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
@@ -134,103 +143,23 @@ class ControllerCommandTest extends TestCase
 		$this->assertNotEmpty( $result );
 	}
 
-	public function testLoadStubReturnsNullWhenFileDoesNotExist(): void
-	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'loadStub' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $command, 'nonexistent.stub' );
-
-		$this->assertNull( $result );
-	}
-
-	public function testLoadStubReturnsContentWhenFileExists(): void
-	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-
-		// The ControllerCommand sets _StubPath to __DIR__ . '/../Stubs'
-		// where __DIR__ is the Commands directory
-		$commandsDir = dirname( dirname( dirname( __DIR__ ) ) ) . '/src/Scaffolding/Commands';
-		$stubPath = $commandsDir . '/../Stubs';
-		$stubContent = '<?php controller stub content';
-		$fs->addFile( $stubPath . '/controller.resource.stub', $stubContent );
-
-		$command = new ControllerCommand( $fs );
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'loadStub' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $command, 'controller.resource.stub' );
-
-		$this->assertEquals( $stubContent, $result );
-	}
-
-	public function testReplacePlaceholdersSubstitutesVariables(): void
-	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'replacePlaceholders' );
-		$method->setAccessible( true );
-
-		$content = 'Hello {{name}}, your age is {{age}}';
-		$replacements = ['name' => 'John', 'age' => '30'];
-
-		$result = $method->invoke( $command, $content, $replacements );
-
-		$this->assertEquals( 'Hello John, your age is 30', $result );
-	}
-
-	public function testReplacePlaceholdersHandlesNullValues(): void
-	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$command = new ControllerCommand( $fs );
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'replacePlaceholders' );
-		$method->setAccessible( true );
-
-		$content = 'Hello {{name}}, your age is {{age}}';
-		$replacements = ['name' => 'John', 'age' => null];
-
-		$result = $method->invoke( $command, $content, $replacements );
-
-		$this->assertEquals( 'Hello John, your age is ', $result );
-	}
-
 	public function testGenerateControllerSuccess(): void
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ControllerCommand( $fs );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'controller.resource.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/controller.resource.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
-		$fs->addFile( $stubPath, $stubContent );
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( false );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
@@ -269,24 +198,18 @@ class ControllerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ControllerCommand( $fs );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'controller.resource.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/controller.resource.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
-		$fs->addFile( $stubPath, $stubContent );
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( false );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
@@ -324,7 +247,8 @@ class ControllerCommandTest extends TestCase
 		$fs->addDirectory( '/test-project/app/Controllers' );
 		$fs->addFile( '/test-project/app/Controllers/PostController.php', 'existing content' );
 
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -364,24 +288,18 @@ class ControllerCommandTest extends TestCase
 		$fs->addDirectory( '/test-project/app/Controllers' );
 		$fs->addFile( '/test-project/app/Controllers/PostController.php', 'existing content' );
 
-		$command = new ControllerCommand( $fs );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'controller.resource.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/controller.resource.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
-		$fs->addFile( $stubPath, $stubContent );
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input (with force option)
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( true );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
@@ -415,24 +333,18 @@ class ControllerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ControllerCommand( $fs );
+		// Set up template engine with API stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'controller.api.stub', '<?php namespace {{namespace}}; class {{class}} { /* API */ }' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the API stub file
-		$stubPath = $stubBasePath . '/controller.api.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} { /* API */ }';
-		$fs->addFile( $stubPath, $stubContent );
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( false );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
@@ -468,8 +380,9 @@ class ControllerCommandTest extends TestCase
 		$fs->setCwd( '/test-project' );
 
 		// Don't set up stub file - let it fail
+		$templates = new MemoryTemplateEngine();
 
-		$command = new ControllerCommand( $fs );
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -498,24 +411,20 @@ class ControllerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ControllerCommand( $fs );
+		// Set up template engine with view stub files
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'view.index.stub', '<h1>{{models}} Index</h1>' );
+		$templates->addTemplate( 'view.create.stub', '<h1>Create {{model}}</h1>' );
+		$templates->addTemplate( 'view.edit.stub', '<h1>Edit {{model}}</h1>' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up view stub files
-		$fs->addFile( $stubBasePath . '/view.index.stub', '<h1>{{models}} Index</h1>' );
-		$fs->addFile( $stubBasePath . '/view.create.stub', '<h1>Create {{model}}</h1>' );
-		$fs->addFile( $stubBasePath . '/view.edit.stub', '<h1>Edit {{model}}</h1>' );
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( false );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
@@ -554,24 +463,20 @@ class ControllerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ControllerCommand( $fs );
+		// Set up template engine with view stub files
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'view.index.stub', '<h1>Index</h1>' );
+		$templates->addTemplate( 'view.create.stub', '<h1>Create</h1>' );
+		$templates->addTemplate( 'view.edit.stub', '<h1>Edit</h1>' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up view stub files
-		$fs->addFile( $stubBasePath . '/view.index.stub', '<h1>Index</h1>' );
-		$fs->addFile( $stubBasePath . '/view.create.stub', '<h1>Create</h1>' );
-		$fs->addFile( $stubBasePath . '/view.edit.stub', '<h1>Edit</h1>' );
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( false );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
@@ -607,24 +512,20 @@ class ControllerCommandTest extends TestCase
 		$fs->addDirectory( '/test-project/resources/views/posts' );
 		$fs->addFile( '/test-project/resources/views/posts/index.php', 'existing content' );
 
-		$command = new ControllerCommand( $fs );
+		// Set up template engine with view stub files
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'view.index.stub', '<h1>New Index</h1>' );
+		$templates->addTemplate( 'view.create.stub', '<h1>Create</h1>' );
+		$templates->addTemplate( 'view.edit.stub', '<h1>Edit</h1>' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up view stub files
-		$fs->addFile( $stubBasePath . '/view.index.stub', '<h1>New Index</h1>' );
-		$fs->addFile( $stubBasePath . '/view.create.stub', '<h1>Create</h1>' );
-		$fs->addFile( $stubBasePath . '/view.edit.stub', '<h1>Edit</h1>' );
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input (without force)
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( false );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
@@ -664,24 +565,20 @@ class ControllerCommandTest extends TestCase
 		$fs->addDirectory( '/test-project/resources/views/posts' );
 		$fs->addFile( '/test-project/resources/views/posts/index.php', 'existing content' );
 
-		$command = new ControllerCommand( $fs );
+		// Set up template engine with view stub files
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'view.index.stub', '<h1>New Index</h1>' );
+		$templates->addTemplate( 'view.create.stub', '<h1>Create</h1>' );
+		$templates->addTemplate( 'view.edit.stub', '<h1>Edit</h1>' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up view stub files
-		$fs->addFile( $stubBasePath . '/view.index.stub', '<h1>New Index</h1>' );
-		$fs->addFile( $stubBasePath . '/view.create.stub', '<h1>Create</h1>' );
-		$fs->addFile( $stubBasePath . '/view.edit.stub', '<h1>Edit</h1>' );
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input (with force)
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( true );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
@@ -714,8 +611,9 @@ class ControllerCommandTest extends TestCase
 		$fs->setCwd( '/test-project' );
 
 		// Don't set up stub files - let it fail
+		$templates = new MemoryTemplateEngine();
 
-		$command = new ControllerCommand( $fs );
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -749,7 +647,8 @@ class ControllerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -806,7 +705,8 @@ class ControllerCommandTest extends TestCase
 		$existingYaml = "routes:\n    existing_route:\n        method: GET\n        route: /existing\n        controller: App\\\\Controllers\\\\ExistingController@index\n";
 		$fs->addFile( '/test-project/config/routes.yaml', $existingYaml );
 
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -850,7 +750,8 @@ class ControllerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -894,7 +795,8 @@ class ControllerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -938,7 +840,8 @@ class ControllerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ControllerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ControllerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );

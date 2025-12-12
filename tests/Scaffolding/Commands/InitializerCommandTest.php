@@ -5,6 +5,7 @@ namespace Tests\Scaffolding\Commands;
 use PHPUnit\Framework\TestCase;
 use Neuron\Scaffolding\Commands\InitializerCommand;
 use Neuron\Core\System\MemoryFileSystem;
+use Neuron\Scaffolding\Testing\MemoryTemplateEngine;
 
 class InitializerCommandTest extends TestCase
 {
@@ -12,7 +13,8 @@ class InitializerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new InitializerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new InitializerCommand( $fs, $templates );
 		$this->assertEquals( 'initializer:generate', $command->getName() );
 	}
 
@@ -20,7 +22,8 @@ class InitializerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new InitializerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new InitializerCommand( $fs, $templates );
 		$description = $command->getDescription();
 
 		$this->assertIsString( $description );
@@ -32,7 +35,8 @@ class InitializerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new InitializerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new InitializerCommand( $fs, $templates );
 
 		// Call configure method
 		$command->configure();
@@ -46,18 +50,11 @@ class InitializerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new InitializerCommand( $fs );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'initializer.stub', '<?php namespace {{namespace}}; class {{class}} { public function run() {} }' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/initializer.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} { public function run() {} }';
-		$fs->addFile( $stubPath, $stubContent );
+		$command = new InitializerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateInitializer' );
@@ -88,18 +85,11 @@ class InitializerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new InitializerCommand( $fs );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'initializer.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/initializer.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
-		$fs->addFile( $stubPath, $stubContent );
+		$command = new InitializerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateInitializer' );
@@ -129,7 +119,8 @@ class InitializerCommandTest extends TestCase
 		$fs->addDirectory( '/test-project/app/Initializers' );
 		$fs->addFile( '/test-project/app/Initializers/TestInitializer.php', 'existing content' );
 
-		$command = new InitializerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new InitializerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -160,7 +151,8 @@ class InitializerCommandTest extends TestCase
 
 		// Don't set up stub file - let it fail
 
-		$command = new InitializerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new InitializerCommand( $fs, $templates );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -177,45 +169,68 @@ class InitializerCommandTest extends TestCase
 		$this->assertFalse( $result );
 	}
 
-	public function testLoadStubReturnsNullWhenFileDoesNotExist(): void
+	public function testGenerateInitializerFailsWhenDirectoryCreationFails(): void
 	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$command = new InitializerCommand( $fs );
+		// Create a mock filesystem that fails to create directories
+		$fs = $this->createMock( \Neuron\Core\System\IFileSystem::class );
+		$fs->method( 'getcwd' )->willReturn( '/test-project' );
+		$fs->method( 'fileExists' )->willReturn( false );
+		$fs->method( 'isDir' )->willReturn( false );
+		$fs->method( 'mkdir' )->willReturn( false );
+
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'initializer.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
+
+		$command = new InitializerCommand( $fs, $templates );
+
+		// Mock output and input
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 
 		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'loadStub' );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$inputProperty = $reflection->getProperty( 'input' );
+		$inputProperty->setAccessible( true );
+		$inputProperty->setValue( $command, $input );
+
+		$method = $reflection->getMethod( 'generateInitializer' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $command, 'nonexistent.stub' );
+		$result = $method->invoke( $command, 'TestInitializer', 'App\\Initializers' );
 
-		$this->assertNull( $result );
+		$this->assertFalse( $result );
 	}
 
-	public function testLoadStubReturnsContentWhenFileExists(): void
+	public function testGenerateInitializerFailsWhenFileWriteFails(): void
 	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
+		// Create a mock filesystem that fails to write files
+		$fs = $this->createMock( \Neuron\Core\System\IFileSystem::class );
+		$fs->method( 'getcwd' )->willReturn( '/test-project' );
+		$fs->method( 'fileExists' )->willReturn( false );
+		$fs->method( 'isDir' )->willReturn( true );
+		$fs->method( 'writeFile' )->willReturn( false );
 
-		$command = new InitializerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'initializer.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
 
-		// Get the actual stub path from the command
+		$command = new InitializerCommand( $fs, $templates );
+
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
 
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/initializer.stub';
-		$stubContent = '<?php stub content';
-		$fs->addFile( $stubPath, $stubContent );
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'loadStub' );
+		$method = $reflection->getMethod( 'generateInitializer' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $command, 'initializer.stub' );
+		$result = $method->invoke( $command, 'TestInitializer', 'App\\Initializers' );
 
-		$this->assertEquals( $stubContent, $result );
+		$this->assertFalse( $result );
 	}
+
 }

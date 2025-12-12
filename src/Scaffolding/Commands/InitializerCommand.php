@@ -5,6 +5,8 @@ namespace Neuron\Scaffolding\Commands;
 use Neuron\Cli\Commands\Command;
 use Neuron\Core\System\IFileSystem;
 use Neuron\Core\System\RealFileSystem;
+use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Services\FileTemplateEngine;
 
 /**
  * CLI command for generating initializer classes.
@@ -12,14 +14,21 @@ use Neuron\Core\System\RealFileSystem;
 class InitializerCommand extends Command
 {
 	private string $_ProjectPath;
-	private string $_StubPath;
 	private IFileSystem $fs;
+	private ITemplateEngine $templates;
 
-	public function __construct( ?IFileSystem $fs = null )
+	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
 		$this->fs = $fs ?? new RealFileSystem();
 		$this->_ProjectPath = $this->fs->getcwd();
-		$this->_StubPath = __DIR__ . '/../Stubs';
+
+		// Default to FileTemplateEngine if not provided
+		if( $templates === null )
+		{
+			$stubPath = __DIR__ . '/../Stubs';
+			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+		}
+		$this->templates = $templates;
 	}
 
 	/**
@@ -111,20 +120,18 @@ class InitializerCommand extends Command
 			}
 		}
 
-		// Load stub
-		$stub = $this->loadStub( 'initializer.stub' );
-		if( !$stub )
+		// Load stub and replace placeholders
+		if( !$this->templates->exists( 'initializer.stub' ) )
 		{
 			$this->output->error( 'Could not load initializer stub' );
 			return false;
 		}
 
-		// Replace placeholders
-		$content = str_replace(
-			[ '{{namespace}}', '{{class}}' ],
-			[ $namespace, $initializerName ],
-			$stub
-		);
+		// Render template
+		$content = $this->templates->render( 'initializer.stub', [
+			'namespace' => $namespace,
+			'class' => $initializerName
+		] );
 
 		// Write file
 		if( $this->fs->writeFile( $initializerFile, $content ) === false )
@@ -135,21 +142,5 @@ class InitializerCommand extends Command
 
 		$this->output->success( "Created initializer: {$initializerFile}" );
 		return true;
-	}
-
-	/**
-	 * Load a stub file
-	 */
-	private function loadStub( string $name ): ?string
-	{
-		$stubFile = $this->_StubPath . '/' . $name;
-
-		if( !$this->fs->fileExists( $stubFile ) )
-		{
-			return null;
-		}
-
-		$result = $this->fs->readFile( $stubFile );
-		return $result === false ? null : $result;
 	}
 }

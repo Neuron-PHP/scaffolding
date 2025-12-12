@@ -4,6 +4,7 @@ namespace Tests\Scaffolding\Commands;
 
 use PHPUnit\Framework\TestCase;
 use Neuron\Scaffolding\Commands\ScaffoldCommand;
+use Neuron\Scaffolding\Testing\MemoryTemplateEngine;
 
 class ScaffoldCommandTest extends TestCase
 {
@@ -312,111 +313,23 @@ class ScaffoldCommandTest extends TestCase
 		$this->assertTrue( $options['null'] );
 	}
 
-	public function testLoadStubReturnsNullWhenFileDoesNotExist(): void
-	{
-		$fs = new \Neuron\Core\System\MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$command = new ScaffoldCommand( $fs );
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'loadStub' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $command, 'nonexistent.stub' );
-
-		$this->assertNull( $result );
-	}
-
-	public function testLoadStubReturnsContentWhenFileExists(): void
-	{
-		$fs = new \Neuron\Core\System\MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-
-		$command = new ScaffoldCommand( $fs );
-
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/controller.stub';
-		$stubContent = '<?php stub content';
-		$fs->addFile( $stubPath, $stubContent );
-
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'loadStub' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $command, 'controller.stub' );
-
-		$this->assertEquals( $stubContent, $result );
-	}
-
-	public function testReplacePlaceholdersSubstitutesVariables(): void
-	{
-		$fs = new \Neuron\Core\System\MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$command = new ScaffoldCommand( $fs );
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'replacePlaceholders' );
-		$method->setAccessible( true );
-
-		$content = 'Hello {{name}}, welcome to {{place}}!';
-		$replacements = [
-			'name' => 'John',
-			'place' => 'Neuron'
-		];
-
-		$result = $method->invoke( $command, $content, $replacements );
-
-		$this->assertEquals( 'Hello John, welcome to Neuron!', $result );
-	}
-
-	public function testReplacePlaceholdersHandlesMultipleOccurrences(): void
-	{
-		$fs = new \Neuron\Core\System\MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$command = new ScaffoldCommand( $fs );
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'replacePlaceholders' );
-		$method->setAccessible( true );
-
-		$content = '{{var}} and {{var}} are the same as {{var}}';
-		$replacements = ['var' => 'test'];
-
-		$result = $method->invoke( $command, $content, $replacements );
-
-		$this->assertEquals( 'test and test are the same as test', $result );
-	}
-
 	public function testGenerateControllerSuccess(): void
 	{
 		$fs = new \Neuron\Core\System\MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ScaffoldCommand( $fs );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'controller.resource.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/controller.resource.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
-		$fs->addFile( $stubPath, $stubContent );
+		$command = new ScaffoldCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( false );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
@@ -454,7 +367,8 @@ class ScaffoldCommandTest extends TestCase
 		$fs->addDirectory( '/test-project/app/Controllers' );
 		$fs->addFile( '/test-project/app/Controllers/PostController.php', 'existing content' );
 
-		$command = new ScaffoldCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ScaffoldCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -490,24 +404,20 @@ class ScaffoldCommandTest extends TestCase
 		$fs = new \Neuron\Core\System\MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ScaffoldCommand( $fs );
+		// Set up template engine with view stub files
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'view.index.stub', '<h1>{{models}} Index</h1>' );
+		$templates->addTemplate( 'view.create.stub', '<h1>Create {{model}}</h1>' );
+		$templates->addTemplate( 'view.edit.stub', '<h1>Edit {{model}}</h1>' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up view stub files
-		$fs->addFile( $stubBasePath . '/view.index.stub', '<h1>{{models}} Index</h1>' );
-		$fs->addFile( $stubBasePath . '/view.create.stub', '<h1>Create {{model}}</h1>' );
-		$fs->addFile( $stubBasePath . '/view.edit.stub', '<h1>Edit {{model}}</h1>' );
+		$command = new ScaffoldCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( false );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
@@ -541,24 +451,20 @@ class ScaffoldCommandTest extends TestCase
 		$fs = new \Neuron\Core\System\MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ScaffoldCommand( $fs );
+		// Set up template engine with view stub files
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'view.index.stub', '<h1>Index</h1>' );
+		$templates->addTemplate( 'view.create.stub', '<h1>Create</h1>' );
+		$templates->addTemplate( 'view.edit.stub', '<h1>Edit</h1>' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up view stub files
-		$fs->addFile( $stubBasePath . '/view.index.stub', '<h1>Index</h1>' );
-		$fs->addFile( $stubBasePath . '/view.create.stub', '<h1>Create</h1>' );
-		$fs->addFile( $stubBasePath . '/view.edit.stub', '<h1>Edit</h1>' );
+		$command = new ScaffoldCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
 		$input->method( 'hasOption' )->willReturn( false );
 
+		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
 		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );

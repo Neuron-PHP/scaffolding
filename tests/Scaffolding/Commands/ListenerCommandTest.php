@@ -5,6 +5,7 @@ namespace Tests\Scaffolding\Commands;
 use PHPUnit\Framework\TestCase;
 use Neuron\Scaffolding\Commands\ListenerCommand;
 use Neuron\Core\System\MemoryFileSystem;
+use Neuron\Scaffolding\Testing\MemoryTemplateEngine;
 
 class ListenerCommandTest extends TestCase
 {
@@ -12,7 +13,8 @@ class ListenerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ListenerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 		$this->assertEquals( 'listener:generate', $command->getName() );
 	}
 
@@ -20,7 +22,8 @@ class ListenerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ListenerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 		$description = $command->getDescription();
 
 		$this->assertIsString( $description );
@@ -32,7 +35,8 @@ class ListenerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ListenerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 
 		// Call configure method
 		$command->configure();
@@ -46,19 +50,11 @@ class ListenerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ListenerCommand( $fs );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'listener.stub', '<?php namespace {{namespace}}; class {{class}} { public function handle({{eventClass}} ${{eventName}}) {} }' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/listener.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} { public function handle({{eventClass}} ${{eventName}}) {} }';
-		$fs->addFile( $stubPath, $stubContent );
-
+		$command = new ListenerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateListener' );
@@ -98,19 +94,11 @@ class ListenerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new ListenerCommand( $fs );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'listener.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/listener.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
-		$fs->addFile( $stubPath, $stubContent );
-
+		$command = new ListenerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateListener' );
@@ -147,7 +135,8 @@ class ListenerCommandTest extends TestCase
 		$fs->addDirectory( '/test-project/app/Listeners' );
 		$fs->addFile( '/test-project/app/Listeners/TestListener.php', 'existing content' );
 
-		$command = new ListenerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -176,9 +165,10 @@ class ListenerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Don't set up stub file - let it fail
+		// Don't add template to template engine - let it fail
+		$templates = new MemoryTemplateEngine();
 
-		$command = new ListenerCommand( $fs );
+		$command = new ListenerCommand( $fs, $templates );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -203,7 +193,8 @@ class ListenerCommandTest extends TestCase
 		// Create config directory
 		$fs->addDirectory( '/test-project/config' );
 
-		$command = new ListenerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'updateEventListeners' );
@@ -240,7 +231,8 @@ class ListenerCommandTest extends TestCase
 		$existingYaml = "events:\n    userRegistered:\n        class: App\\Events\\UserRegistered\n        listeners:\n            - App\\Listeners\\ExistingListener\n";
 		$fs->addFile( '/test-project/config/event-listeners.yaml', $existingYaml );
 
-		$command = new ListenerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'updateEventListeners' );
@@ -272,7 +264,8 @@ class ListenerCommandTest extends TestCase
 		$existingYaml = "events:\n    userRegistered:\n        class: App\\Events\\UserRegistered\n        listeners:\n            - App\\Listeners\\SendWelcomeEmail\n";
 		$fs->addFile( '/test-project/config/event-listeners.yaml', $existingYaml );
 
-		$command = new ListenerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'updateEventListeners' );
@@ -298,7 +291,8 @@ class ListenerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ListenerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateEventKey' );
@@ -313,7 +307,8 @@ class ListenerCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ListenerCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'getClassName' );
@@ -324,46 +319,171 @@ class ListenerCommandTest extends TestCase
 		$this->assertEquals( 'UserRegistered', $result );
 	}
 
-	public function testLoadStubReturnsNullWhenFileDoesNotExist(): void
+	public function testGenerateListenerFailsWhenDirectoryCreationFails(): void
+	{
+		// Create a mock filesystem that fails to create directories
+		$fs = $this->createMock( \Neuron\Core\System\IFileSystem::class );
+		$fs->method( 'getcwd' )->willReturn( '/test-project' );
+		$fs->method( 'fileExists' )->willReturn( false );
+		$fs->method( 'isDir' )->willReturn( false );
+		$fs->method( 'mkdir' )->willReturn( false );
+
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'listener.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
+
+		$command = new ListenerCommand( $fs, $templates );
+
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$reflection = new \ReflectionClass( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$method = $reflection->getMethod( 'generateListener' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'TestListener', 'App\\Listeners', 'App\\Events\\TestEvent' );
+
+		$this->assertFalse( $result );
+	}
+
+	public function testGenerateListenerFailsWhenFileWriteFails(): void
+	{
+		// Create a mock filesystem that fails to write files
+		$fs = $this->createMock( \Neuron\Core\System\IFileSystem::class );
+		$fs->method( 'getcwd' )->willReturn( '/test-project' );
+		$fs->method( 'fileExists' )->willReturn( false );
+		$fs->method( 'isDir' )->willReturn( true );
+		$fs->method( 'writeFile' )->willReturn( false );
+
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'listener.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
+
+		$command = new ListenerCommand( $fs, $templates );
+
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$reflection = new \ReflectionClass( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$method = $reflection->getMethod( 'generateListener' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'TestListener', 'App\\Listeners', 'App\\Events\\TestEvent' );
+
+		$this->assertFalse( $result );
+	}
+
+	public function testUpdateEventListenersCreatesConfigDirectoryIfMissing(): void
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new ListenerCommand( $fs );
+
+		// Don't create config directory - let the method create it
+
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'loadStub' );
+		$method = $reflection->getMethod( 'updateEventListeners' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $command, 'nonexistent.stub' );
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
 
-		$this->assertNull( $result );
+		$result = $method->invoke( $command, 'App\\Events\\TestEvent', 'App\\Listeners\\TestListener' );
+
+		$this->assertTrue( $result );
+
+		// Verify directory was created
+		$directories = $fs->getDirectories();
+		$this->assertArrayHasKey( '/test-project/config', $directories );
 	}
 
-	public function testLoadStubReturnsContentWhenFileExists(): void
+	public function testUpdateEventListenersFailsWhenConfigDirectoryCreationFails(): void
+	{
+		// Create a mock filesystem that fails to create directories
+		$fs = $this->createMock( \Neuron\Core\System\IFileSystem::class );
+		$fs->method( 'getcwd' )->willReturn( '/test-project' );
+		$fs->method( 'isDir' )->willReturn( false );
+		$fs->method( 'mkdir' )->willReturn( false );
+
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
+
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$reflection = new \ReflectionClass( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$method = $reflection->getMethod( 'updateEventListeners' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'App\\Events\\TestEvent', 'App\\Listeners\\TestListener' );
+
+		$this->assertFalse( $result );
+	}
+
+	public function testUpdateEventListenersHandlesYamlParseException(): void
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
+		$fs->addDirectory( '/test-project/config' );
 
-		$command = new ListenerCommand( $fs );
+		// Create invalid YAML file
+		$fs->addFile( '/test-project/config/event-listeners.yaml', 'invalid: yaml: content: [[[' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/listener.stub';
-		$stubContent = '<?php stub content';
-		$fs->addFile( $stubPath, $stubContent );
-
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'loadStub' );
+		$method = $reflection->getMethod( 'updateEventListeners' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $command, 'listener.stub' );
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
 
-		$this->assertEquals( $stubContent, $result );
+		$result = $method->invoke( $command, 'App\\Events\\TestEvent', 'App\\Listeners\\TestListener' );
+
+		$this->assertFalse( $result );
 	}
+
+	public function testUpdateEventListenersFailsWhenFileWriteFails(): void
+	{
+		// Create a mock filesystem that can read but can't write
+		$fs = $this->createMock( \Neuron\Core\System\IFileSystem::class );
+		$fs->method( 'getcwd' )->willReturn( '/test-project' );
+		$fs->method( 'isDir' )->willReturn( true );
+		$fs->method( 'fileExists' )->willReturn( false );
+		$fs->method( 'writeFile' )->willReturn( false );
+
+		$templates = new MemoryTemplateEngine();
+		$command = new ListenerCommand( $fs, $templates );
+
+		// Mock output
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$reflection = new \ReflectionClass( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$method = $reflection->getMethod( 'updateEventListeners' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'App\\Events\\TestEvent', 'App\\Listeners\\TestListener' );
+
+		$this->assertFalse( $result );
+	}
+
 }

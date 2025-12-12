@@ -5,6 +5,8 @@ namespace Neuron\Scaffolding\Commands;
 use Neuron\Cli\Commands\Command;
 use Neuron\Core\System\IFileSystem;
 use Neuron\Core\System\RealFileSystem;
+use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Services\FileTemplateEngine;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -16,15 +18,22 @@ use Symfony\Component\Yaml\Yaml;
 class ControllerCommand extends Command
 {
 	private string $_ProjectPath;
-	private string $_StubPath;
 	private array $_Messages = [];
 	private IFileSystem $fs;
+	private ITemplateEngine $templates;
 
-	public function __construct( ?IFileSystem $fs = null )
+	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
 		$this->fs = $fs ?? new RealFileSystem();
 		$this->_ProjectPath = $this->fs->getcwd();
-		$this->_StubPath = __DIR__ . '/../Stubs';
+
+		// Default to FileTemplateEngine if not provided
+		if( $templates === null )
+		{
+			$stubPath = __DIR__ . '/../Stubs';
+			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+		}
+		$this->templates = $templates;
 	}
 
 	/**
@@ -184,15 +193,14 @@ class ControllerCommand extends Command
 
 		// Load stub
 		$stubFile = $info['isApi'] ? 'controller.api.stub' : 'controller.resource.stub';
-		$stub = $this->loadStub( $stubFile );
-		if( !$stub )
+		if( !$this->templates->exists( $stubFile ) )
 		{
 			$this->output->error( "Could not load stub file: {$stubFile}" );
 			return false;
 		}
 
 		// Replace placeholders
-		$content = $this->replacePlaceholders( $stub, array_merge( $info, ['namespace' => $namespace] ) );
+		$content = $this->templates->render( $stubFile, array_merge( $info, ['namespace' => $namespace] ) );
 
 		// Create directory
 		if( !$this->fs->isDir( $controllerDir ) )
@@ -246,15 +254,15 @@ class ControllerCommand extends Command
 			}
 
 			// Load stub
-			$stub = $this->loadStub( 'view.' . $view . '.stub' );
-			if( !$stub )
+			$stubFile = 'view.' . $view . '.stub';
+			if( !$this->templates->exists( $stubFile ) )
 			{
-				$this->output->error( "Could not load view stub: view.{$view}.stub" );
+				$this->output->error( "Could not load view stub: {$stubFile}" );
 				return false;
 			}
 
 			// Replace placeholders
-			$content = $this->replacePlaceholders( $stub, $info );
+			$content = $this->templates->render( $stubFile, $info );
 
 			// Write file
 			if( $this->fs->writeFile( $viewFile, $content ) === false )
@@ -427,32 +435,6 @@ class ControllerCommand extends Command
 		return true;
 	}
 
-	/**
-	 * Load stub file
-	 */
-	private function loadStub( string $filename ): ?string
-	{
-		$path = $this->_StubPath . '/' . $filename;
-		if( !$this->fs->fileExists( $path ) )
-		{
-			return null;
-		}
-		$result = $this->fs->readFile( $path );
-		return $result === false ? null : $result;
-	}
-
-	/**
-	 * Replace placeholders in stub content
-	 */
-	private function replacePlaceholders( string $content, array $replacements ): string
-	{
-		foreach( $replacements as $key => $value )
-		{
-			// Convert null to empty string for PHP 8.4 compatibility
-			$content = str_replace( '{{' . $key . '}}', $value ?? '', $content );
-		}
-		return $content;
-	}
 
 	/**
 	 * Simple pluralization

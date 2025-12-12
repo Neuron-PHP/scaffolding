@@ -5,6 +5,7 @@ namespace Tests\Scaffolding\Commands;
 use PHPUnit\Framework\TestCase;
 use Neuron\Scaffolding\Commands\JobCommand;
 use Neuron\Core\System\MemoryFileSystem;
+use Neuron\Scaffolding\Testing\MemoryTemplateEngine;
 
 class JobCommandTest extends TestCase
 {
@@ -12,7 +13,8 @@ class JobCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 		$this->assertEquals( 'job:generate', $command->getName() );
 	}
 
@@ -20,7 +22,8 @@ class JobCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 		$description = $command->getDescription();
 
 		$this->assertIsString( $description );
@@ -32,7 +35,8 @@ class JobCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 
 		// Call configure method
 		$command->configure();
@@ -45,7 +49,8 @@ class JobCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'validateCronExpression' );
@@ -69,7 +74,8 @@ class JobCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'validateCronExpression' );
@@ -91,19 +97,11 @@ class JobCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new JobCommand( $fs );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'job.stub', '<?php namespace {{namespace}}; class {{class}} { protected string $name = "{{jobName}}"; public function handle() {} }' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/job.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} { protected string $name = "{{jobName}}"; public function handle() {} }';
-		$fs->addFile( $stubPath, $stubContent );
-
+		$command = new JobCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateJob' );
@@ -142,19 +140,11 @@ class JobCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		$command = new JobCommand( $fs );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'job.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
 
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/job.stub';
-		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
-		$fs->addFile( $stubPath, $stubContent );
-
+		$command = new JobCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateJob' );
@@ -191,7 +181,8 @@ class JobCommandTest extends TestCase
 		$fs->addDirectory( '/test-project/app/Jobs' );
 		$fs->addFile( '/test-project/app/Jobs/TestJob.php', 'existing content' );
 
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -222,7 +213,8 @@ class JobCommandTest extends TestCase
 
 		// Don't set up stub file - let it fail
 
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -247,7 +239,8 @@ class JobCommandTest extends TestCase
 		// Create config directory
 		$fs->addDirectory( '/test-project/config' );
 
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'addToSchedule' );
@@ -284,7 +277,8 @@ class JobCommandTest extends TestCase
 		$existingYaml = "schedule:\n    sendEmailReminders:\n        class: App\\Jobs\\SendEmailReminders\n        cron: '0 9 * * *'\n        args: []\n";
 		$fs->addFile( '/test-project/config/schedule.yaml', $existingYaml );
 
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'addToSchedule' );
@@ -318,7 +312,8 @@ class JobCommandTest extends TestCase
 		$existingYaml = "schedule:\n    sendEmailReminders:\n        class: App\\Jobs\\SendEmailReminders\n        cron: '0 9 * * *'\n        args: []\n";
 		$fs->addFile( '/test-project/config/schedule.yaml', $existingYaml );
 
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'addToSchedule' );
@@ -350,7 +345,8 @@ class JobCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new JobCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new JobCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'toSnakeCase' );
@@ -361,46 +357,5 @@ class JobCommandTest extends TestCase
 		$this->assertEquals( 'test', $method->invoke( $command, 'Test' ) );
 	}
 
-	public function testLoadStubReturnsNullWhenFileDoesNotExist(): void
-	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$command = new JobCommand( $fs );
 
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'loadStub' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $command, 'nonexistent.stub' );
-
-		$this->assertNull( $result );
-	}
-
-	public function testLoadStubReturnsContentWhenFileExists(): void
-	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-
-		$command = new JobCommand( $fs );
-
-		// Get the actual stub path from the command
-		$reflection = new \ReflectionClass( $command );
-		$stubPathProperty = $reflection->getProperty( '_StubPath' );
-		$stubPathProperty->setAccessible( true );
-		$stubBasePath = $stubPathProperty->getValue( $command );
-
-		// Set up the stub file
-		$stubPath = $stubBasePath . '/job.stub';
-		$stubContent = '<?php stub content';
-		$fs->addFile( $stubPath, $stubContent );
-
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'loadStub' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $command, 'job.stub' );
-
-		$this->assertEquals( $stubContent, $result );
-	}
 }

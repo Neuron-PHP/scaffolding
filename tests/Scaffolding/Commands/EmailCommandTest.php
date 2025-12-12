@@ -5,6 +5,7 @@ namespace Tests\Scaffolding\Commands;
 use PHPUnit\Framework\TestCase;
 use Neuron\Scaffolding\Commands\EmailCommand;
 use Neuron\Core\System\MemoryFileSystem;
+use Neuron\Scaffolding\Testing\MemoryTemplateEngine;
 
 class EmailCommandTest extends TestCase
 {
@@ -12,7 +13,8 @@ class EmailCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new EmailCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new EmailCommand( $fs, $templates );
 		$this->assertEquals( 'mail:generate', $command->getName() );
 	}
 
@@ -20,7 +22,8 @@ class EmailCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new EmailCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new EmailCommand( $fs, $templates );
 		$description = $command->getDescription();
 
 		$this->assertIsString( $description );
@@ -32,7 +35,8 @@ class EmailCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$command = new EmailCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new EmailCommand( $fs, $templates );
 
 		// Call configure method
 		$command->configure();
@@ -41,57 +45,19 @@ class EmailCommandTest extends TestCase
 		$this->assertTrue( true );
 	}
 
-	public function testReplacePlaceholdersSubstitutesVariables(): void
-	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$command = new EmailCommand( $fs );
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'replacePlaceholders' );
-		$method->setAccessible( true );
-
-		$content = 'Subject: {{title}} - Body: {{content}}';
-		$replacements = ['title' => 'Welcome', 'content' => 'Hello World'];
-
-		$result = $method->invoke( $command, $content, $replacements );
-
-		$this->assertEquals( 'Subject: Welcome - Body: Hello World', $result );
-	}
-
-	public function testReplacePlaceholdersHandlesNullValues(): void
-	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$command = new EmailCommand( $fs );
-
-		$reflection = new \ReflectionClass( $command );
-		$method = $reflection->getMethod( 'replacePlaceholders' );
-		$method->setAccessible( true );
-
-		$content = 'Title: {{title}}, Content: {{content}}';
-		$replacements = ['title' => 'Test', 'content' => null];
-
-		$result = $method->invoke( $command, $content, $replacements );
-
-		$this->assertEquals( 'Title: Test, Content: ', $result );
-	}
-
 	public function testCreateTemplateSuccess(): void
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Set up the stub file (EmailCommand looks in component path for stub)
-		$componentPath = dirname( dirname( dirname( dirname( dirname( __DIR__ ) ) ) ) );
-		$stubPath = $componentPath . '/src/Cms/Cli/Commands/Generate/stubs/email.stub';
-		$stubContent = '<h1>{{title}}</h1><div>{{content}}</div>';
-		$fs->addFile( $stubPath, $stubContent );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'email.stub', '<h1>{{title}}</h1><div>{{content}}</div>' );
 
 		// Create emails directory
 		$fs->addDirectory( '/test-project/resources/views/emails' );
 
-		$command = new EmailCommand( $fs );
+		$command = new EmailCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'createTemplate' );
@@ -115,15 +81,13 @@ class EmailCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Set up the stub file
-		$componentPath = dirname( dirname( dirname( dirname( dirname( __DIR__ ) ) ) ) );
-		$stubPath = $componentPath . '/src/Cms/Cli/Commands/Generate/stubs/email.stub';
-		$stubContent = '<h1>{{title}}</h1>';
-		$fs->addFile( $stubPath, $stubContent );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'email.stub', '<h1>{{title}}</h1>' );
 
 		// Don't create emails directory - let command create it
 
-		$command = new EmailCommand( $fs );
+		$command = new EmailCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'createTemplate' );
@@ -147,7 +111,8 @@ class EmailCommandTest extends TestCase
 		$fs->addDirectory( '/test-project/resources/views/emails' );
 		$fs->addFile( '/test-project/resources/views/emails/welcome.php', 'existing content' );
 
-		$command = new EmailCommand( $fs );
+		$templates = new MemoryTemplateEngine();
+		$command = new EmailCommand( $fs, $templates );
 
 		// Mock output to prevent errors
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -169,9 +134,10 @@ class EmailCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Don't set up stub file - let it fail
+		// Don't add template to template engine - let it fail
+		$templates = new MemoryTemplateEngine();
 
-		$command = new EmailCommand( $fs );
+		$command = new EmailCommand( $fs, $templates );
 
 		// Mock output to prevent errors
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -193,15 +159,13 @@ class EmailCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Set up the stub file
-		$componentPath = dirname( dirname( dirname( dirname( dirname( __DIR__ ) ) ) ) );
-		$stubPath = $componentPath . '/src/Cms/Cli/Commands/Generate/stubs/email.stub';
-		$stubContent = '<h1>{{title}}</h1>';
-		$fs->addFile( $stubPath, $stubContent );
+		// Set up template engine with stub content
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'email.stub', '<h1>{{title}}</h1>' );
 
 		$fs->addDirectory( '/test-project/resources/views/emails' );
 
-		$command = new EmailCommand( $fs );
+		$command = new EmailCommand( $fs, $templates );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'createTemplate' );
@@ -215,5 +179,90 @@ class EmailCommandTest extends TestCase
 		$files = $fs->getFiles();
 		$content = $files['/test-project/resources/views/emails/password-reset.php'];
 		$this->assertStringContainsString( 'Password Reset', $content );
+	}
+
+	public function testCreateTemplateFailsWhenDirectoryCreationFails(): void
+	{
+		// Create a mock filesystem that fails to create directories
+		$fs = $this->createMock( \Neuron\Core\System\IFileSystem::class );
+		$fs->method( 'getcwd' )->willReturn( '/test-project' );
+		$fs->method( 'isDir' )->willReturn( false );
+		$fs->method( 'mkdir' )->willReturn( false );
+
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'email.stub', '<h1>{{title}}</h1>' );
+
+		$command = new EmailCommand( $fs, $templates );
+
+		// Mock output to prevent errors
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$reflection = new \ReflectionClass( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$method = $reflection->getMethod( 'createTemplate' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'welcome' );
+
+		$this->assertFalse( $result );
+	}
+
+	public function testCreateTemplateFailsWhenTemplateRenderThrowsException(): void
+	{
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$fs->addDirectory( '/test-project/resources/views/emails' );
+
+		// Create a mock template engine that throws exception on render
+		$templates = $this->createMock( \Neuron\Scaffolding\Contracts\ITemplateEngine::class );
+		$templates->method( 'exists' )->willReturn( true );
+		$templates->method( 'render' )->willThrowException( new \Exception( 'Render failed' ) );
+
+		$command = new EmailCommand( $fs, $templates );
+
+		// Mock output to prevent errors
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$reflection = new \ReflectionClass( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$method = $reflection->getMethod( 'createTemplate' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'welcome' );
+
+		$this->assertFalse( $result );
+	}
+
+	public function testCreateTemplateFailsWhenFileWriteFails(): void
+	{
+		// Create a mock filesystem that fails to write files
+		$fs = $this->createMock( \Neuron\Core\System\IFileSystem::class );
+		$fs->method( 'getcwd' )->willReturn( '/test-project' );
+		$fs->method( 'isDir' )->willReturn( true );
+		$fs->method( 'fileExists' )->willReturn( false );
+		$fs->method( 'writeFile' )->willReturn( false );
+
+		$templates = new MemoryTemplateEngine();
+		$templates->addTemplate( 'email.stub', '<h1>{{title}}</h1>' );
+
+		$command = new EmailCommand( $fs, $templates );
+
+		// Mock output to prevent errors
+		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		$reflection = new \ReflectionClass( $command );
+		$outputProperty = $reflection->getProperty( 'output' );
+		$outputProperty->setAccessible( true );
+		$outputProperty->setValue( $command, $output );
+
+		$method = $reflection->getMethod( 'createTemplate' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $command, 'welcome' );
+
+		$this->assertFalse( $result );
 	}
 }

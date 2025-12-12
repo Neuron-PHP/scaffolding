@@ -5,6 +5,8 @@ namespace Neuron\Scaffolding\Commands;
 use Neuron\Cli\Commands\Command;
 use Neuron\Core\System\IFileSystem;
 use Neuron\Core\System\RealFileSystem;
+use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Services\FileTemplateEngine;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -15,13 +17,20 @@ class ListenerCommand extends Command
 {
 	private string $_ProjectPath;
 	private IFileSystem $fs;
-	private string $_StubPath;
+	private ITemplateEngine $templates;
 
-	public function __construct( ?IFileSystem $fs = null )
+	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
 		$this->fs = $fs ?? new RealFileSystem();
 		$this->_ProjectPath = $this->fs->getcwd();
-		$this->_StubPath = __DIR__ . '/../Stubs';
+
+		// Default to FileTemplateEngine if not provided
+		if( $templates === null )
+		{
+			$stubPath = __DIR__ . '/../Stubs';
+			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+		}
+		$this->templates = $templates;
 	}
 
 	/**
@@ -132,9 +141,8 @@ class ListenerCommand extends Command
 			}
 		}
 
-		// Load stub
-		$stub = $this->loadStub( 'listener.stub' );
-		if( !$stub )
+		// Load stub and replace placeholders
+		if( !$this->templates->exists( 'listener.stub' ) )
 		{
 			$this->output->error( 'Could not load listener stub' );
 			return false;
@@ -143,12 +151,13 @@ class ListenerCommand extends Command
 		// Extract event name from class
 		$eventName = $this->getClassName( $eventClass );
 
-		// Replace placeholders
-		$content = str_replace(
-			[ '{{namespace}}', '{{class}}', '{{eventClass}}', '{{eventName}}' ],
-			[ $namespace, $listenerName, $eventClass, $eventName ],
-			$stub
-		);
+		// Render template
+		$content = $this->templates->render( 'listener.stub', [
+			'namespace' => $namespace,
+			'class' => $listenerName,
+			'eventClass' => $eventClass,
+			'eventName' => $eventName
+		] );
 
 		// Write file
 		if( $this->fs->writeFile( $listenerFile, $content ) === false )
@@ -263,21 +272,5 @@ class ListenerCommand extends Command
 	{
 		$parts = explode( '\\', $fqcn );
 		return end( $parts );
-	}
-
-	/**
-	 * Load a stub file
-	 */
-	private function loadStub( string $name ): ?string
-	{
-		$stubFile = $this->_StubPath . '/' . $name;
-
-		if( !$this->fs->fileExists( $stubFile ) )
-		{
-			return null;
-		}
-
-		$result = $this->fs->readFile( $stubFile );
-		return $result === false ? null : $result;
 	}
 }

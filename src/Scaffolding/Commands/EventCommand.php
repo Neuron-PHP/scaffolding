@@ -5,6 +5,8 @@ namespace Neuron\Scaffolding\Commands;
 use Neuron\Cli\Commands\Command;
 use Neuron\Core\System\IFileSystem;
 use Neuron\Core\System\RealFileSystem;
+use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Services\FileTemplateEngine;
 
 /**
  * CLI command for generating event classes.
@@ -12,14 +14,21 @@ use Neuron\Core\System\RealFileSystem;
 class EventCommand extends Command
 {
 	private string $_ProjectPath;
-	private string $_StubPath;
 	private IFileSystem $fs;
+	private ITemplateEngine $templates;
 
-	public function __construct( ?IFileSystem $fs = null )
+	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
 		$this->fs = $fs ?? new RealFileSystem();
 		$this->_ProjectPath = $this->fs->getcwd();
-		$this->_StubPath = __DIR__ . '/../Stubs';
+
+		// Default to FileTemplateEngine if not provided
+		if( $templates === null )
+		{
+			$stubPath = __DIR__ . '/../Stubs';
+			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+		}
+		$this->templates = $templates;
 	}
 
 	/**
@@ -153,9 +162,8 @@ class EventCommand extends Command
 			}
 		}
 
-		// Load stub
-		$stub = $this->loadStub( 'event.stub' );
-		if( !$stub )
+		// Load stub and replace placeholders
+		if( !$this->templates->exists( 'event.stub' ) )
 		{
 			$this->output->error( 'Could not load event stub' );
 			return false;
@@ -173,18 +181,14 @@ class EventCommand extends Command
 			$constructorBody .= "\t\t\$this->{$property['name']} = \${$property['name']};\n";
 		}
 
-		// Replace placeholders
-		$content = str_replace(
-			[ '{{namespace}}', '{{class}}', '{{properties}}', '{{constructorParams}}', '{{constructorBody}}' ],
-			[
-				$namespace,
-				$eventName,
-				rtrim( $propertyDeclarations ),
-				implode( ', ', $constructorParams ),
-				rtrim( $constructorBody )
-			],
-			$stub
-		);
+		// Render template
+		$content = $this->templates->render( 'event.stub', [
+			'namespace' => $namespace,
+			'class' => $eventName,
+			'properties' => rtrim( $propertyDeclarations ),
+			'constructorParams' => implode( ', ', $constructorParams ),
+			'constructorBody' => rtrim( $constructorBody )
+		] );
 
 		// Write file
 		if( $this->fs->writeFile( $eventFile, $content ) === false )
@@ -195,21 +199,5 @@ class EventCommand extends Command
 
 		$this->output->success( "Created event: {$eventFile}" );
 		return true;
-	}
-
-	/**
-	 * Load a stub file
-	 */
-	private function loadStub( string $name ): ?string
-	{
-		$stubFile = $this->_StubPath . '/' . $name;
-
-		if( !$this->fs->fileExists( $stubFile ) )
-		{
-			return null;
-		}
-
-		$result = $this->fs->readFile( $stubFile );
-		return $result === false ? null : $result;
 	}
 }
