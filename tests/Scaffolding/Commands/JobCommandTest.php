@@ -91,12 +91,19 @@ class JobCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
+		$command = new JobCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
 		// Set up the stub file
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/job.stub';
+		$stubPath = $stubBasePath . '/job.stub';
 		$stubContent = '<?php namespace {{namespace}}; class {{class}} { protected string $name = "{{jobName}}"; public function handle() {} }';
 		$fs->addFile( $stubPath, $stubContent );
 
-		$command = new JobCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateJob' );
@@ -135,12 +142,19 @@ class JobCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
+		$command = new JobCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
 		// Set up the stub file
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/job.stub';
+		$stubPath = $stubBasePath . '/job.stub';
 		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
 		$fs->addFile( $stubPath, $stubContent );
 
-		$command = new JobCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateJob' );
@@ -367,12 +381,19 @@ class JobCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
+		$command = new JobCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
 		// Set up the stub file
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/job.stub';
+		$stubPath = $stubBasePath . '/job.stub';
 		$stubContent = '<?php stub content';
 		$fs->addFile( $stubPath, $stubContent );
 
-		$command = new JobCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'loadStub' );

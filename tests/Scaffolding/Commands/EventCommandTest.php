@@ -124,12 +124,18 @@ class EventCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
+		$command = new EventCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
 		// Set up the stub file
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/event.stub';
+		$stubPath = $stubBasePath . '/event.stub';
 		$stubContent = '<?php namespace {{namespace}}; class {{class}} { {{properties}} public function __construct({{constructorParams}}) { {{constructorBody}} } }';
 		$fs->addFile( $stubPath, $stubContent );
-
-		$command = new EventCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateEvent' );
@@ -174,12 +180,18 @@ class EventCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
+		$command = new EventCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
 		// Set up the stub file
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/event.stub';
+		$stubPath = $stubBasePath . '/event.stub';
 		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
 		$fs->addFile( $stubPath, $stubContent );
-
-		$command = new EventCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateEvent' );
@@ -260,12 +272,18 @@ class EventCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
+		$command = new EventCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
 		// Set up the stub file
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/event.stub';
+		$stubPath = $stubBasePath . '/event.stub';
 		$stubContent = '<?php stub content';
 		$fs->addFile( $stubPath, $stubContent );
-
-		$command = new EventCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'loadStub' );

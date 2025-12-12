@@ -332,12 +332,19 @@ class ScaffoldCommandTest extends TestCase
 		$fs = new \Neuron\Core\System\MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
+		$command = new ScaffoldCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
 		// Set up the stub file
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/controller.stub';
+		$stubPath = $stubBasePath . '/controller.stub';
 		$stubContent = '<?php stub content';
 		$fs->addFile( $stubPath, $stubContent );
 
-		$command = new ScaffoldCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'loadStub' );

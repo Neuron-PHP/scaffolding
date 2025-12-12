@@ -46,12 +46,18 @@ class InitializerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Set up the stub file at the exact path with ../ that InitializerCommand uses
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/initializer.stub';
+		$command = new InitializerCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
+		// Set up the stub file
+		$stubPath = $stubBasePath . '/initializer.stub';
 		$stubContent = '<?php namespace {{namespace}}; class {{class}} { public function run() {} }';
 		$fs->addFile( $stubPath, $stubContent );
-
-		$command = new InitializerCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateInitializer' );
@@ -82,12 +88,18 @@ class InitializerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Set up the stub file at the exact path with ../ that InitializerCommand uses
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/initializer.stub';
+		$command = new InitializerCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
+		// Set up the stub file
+		$stubPath = $stubBasePath . '/initializer.stub';
 		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
 		$fs->addFile( $stubPath, $stubContent );
-
-		$command = new InitializerCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateInitializer' );
@@ -185,12 +197,18 @@ class InitializerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Set up the stub file at the exact path with ../ that InitializerCommand uses
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/initializer.stub';
+		$command = new InitializerCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
+		// Set up the stub file
+		$stubPath = $stubBasePath . '/initializer.stub';
 		$stubContent = '<?php stub content';
 		$fs->addFile( $stubPath, $stubContent );
-
-		$command = new InitializerCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'loadStub' );

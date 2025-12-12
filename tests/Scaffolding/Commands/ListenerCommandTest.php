@@ -46,12 +46,19 @@ class ListenerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
+		$command = new ListenerCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
 		// Set up the stub file
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/listener.stub';
+		$stubPath = $stubBasePath . '/listener.stub';
 		$stubContent = '<?php namespace {{namespace}}; class {{class}} { public function handle({{eventClass}} ${{eventName}}) {} }';
 		$fs->addFile( $stubPath, $stubContent );
 
-		$command = new ListenerCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateListener' );
@@ -91,12 +98,19 @@ class ListenerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
+		$command = new ListenerCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
 		// Set up the stub file
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/listener.stub';
+		$stubPath = $stubBasePath . '/listener.stub';
 		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
 		$fs->addFile( $stubPath, $stubContent );
 
-		$command = new ListenerCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateListener' );
@@ -330,12 +344,19 @@ class ListenerCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
+		$command = new ListenerCommand( $fs );
+
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
 		// Set up the stub file
-		$stubPath = '/Users/lee/projects/personal/neuron/scaffolding/src/Scaffolding/Commands/../Stubs/listener.stub';
+		$stubPath = $stubBasePath . '/listener.stub';
 		$stubContent = '<?php stub content';
 		$fs->addFile( $stubPath, $stubContent );
 
-		$command = new ListenerCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'loadStub' );
