@@ -77,7 +77,7 @@ class InstallCommand extends Command
 			$this->output->info( "  - Configuration exists" );
 			$this->output->write( "\n" );
 
-			if( !$this->input->confirm( "Do you want to continue anyway?", false ) )
+			if( !$this->confirm( "Do you want to continue anyway?", false ) )
 			{
 				$this->output->info( "Installation cancelled." );
 				return 0;
@@ -116,7 +116,7 @@ class InstallCommand extends Command
 		// Ask to run migration
 		$this->output->write( "\n" );
 
-		if( $this->input->confirm( "Would you like to run the queue migration now?", true ) )
+		if( $this->confirm( "Would you like to run the queue migration now?", true ) )
 		{
 			if( !$this->runMigration() )
 			{
