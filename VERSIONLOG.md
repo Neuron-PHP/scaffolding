@@ -1,3 +1,5 @@
+## 0.8.9
+
 ## 0.8.8 2026-01-13
 
 * **All scaffolding commands now use system abstractions** - Refactored to use IFileSystem interface
