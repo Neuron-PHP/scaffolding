@@ -1,4 +1,4 @@
-## 0.8.8
+## 0.8.8 2026-01-13
 
 * **All scaffolding commands now use system abstractions** - Refactored to use IFileSystem interface
 * Refactored 8 commands: ControllerCommand, EmailCommand, EventCommand, InitializerCommand, JobCommand, ListenerCommand, Queue/InstallCommand, ScaffoldCommand
