@@ -3,6 +3,7 @@
 namespace Neuron\Scaffolding\Commands\Queue;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\Registry\RegistryKeys;
 use Neuron\Core\System\IFileSystem;
 use Neuron\Core\System\RealFileSystem;
 use Neuron\Data\Settings\SettingManager;
@@ -352,7 +353,7 @@ YAML;
 		try
 		{
 			// Get the CLI application from the registry
-			$app = Registry::getInstance()->get( 'cli.application' );
+			$app = Registry::getInstance()->get( RegistryKeys::CLI_APPLICATION_LEGACY );
 
 			if( !$app )
 			{
