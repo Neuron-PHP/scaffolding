@@ -5,7 +5,6 @@ namespace Tests\Scaffolding\Commands;
 use PHPUnit\Framework\TestCase;
 use Neuron\Scaffolding\Commands\EventCommand;
 use Neuron\Core\System\MemoryFileSystem;
-use Neuron\Scaffolding\Testing\MemoryTemplateEngine;
 
 class EventCommandTest extends TestCase
 {
@@ -13,8 +12,7 @@ class EventCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$templates = new MemoryTemplateEngine();
-		$command = new EventCommand( $fs, $templates );
+		$command = new EventCommand( $fs );
 		$this->assertEquals( 'event:generate', $command->getName() );
 	}
 
@@ -22,8 +20,7 @@ class EventCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$templates = new MemoryTemplateEngine();
-		$command = new EventCommand( $fs, $templates );
+		$command = new EventCommand( $fs );
 		$description = $command->getDescription();
 
 		$this->assertIsString( $description );
@@ -34,8 +31,7 @@ class EventCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$templates = new MemoryTemplateEngine();
-		$command = new EventCommand( $fs, $templates );
+		$command = new EventCommand( $fs );
 
 		// Call configure method
 		$command->configure();
@@ -48,8 +44,7 @@ class EventCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$templates = new MemoryTemplateEngine();
-		$command = new EventCommand( $fs, $templates );
+		$command = new EventCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 
@@ -74,8 +69,7 @@ class EventCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$templates = new MemoryTemplateEngine();
-		$command = new EventCommand( $fs, $templates );
+		$command = new EventCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 
@@ -101,8 +95,7 @@ class EventCommandTest extends TestCase
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
-		$templates = new MemoryTemplateEngine();
-		$command = new EventCommand( $fs, $templates );
+		$command = new EventCommand( $fs );
 
 		$reflection = new \ReflectionClass( $command );
 
@@ -131,11 +124,18 @@ class EventCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Set up template engine with stub content
-		$templates = new MemoryTemplateEngine();
-		$templates->addTemplate( 'event.stub', '<?php namespace {{namespace}}; class {{class}} { {{properties}} public function __construct({{constructorParams}}) { {{constructorBody}} } }' );
+		$command = new EventCommand( $fs );
 
-		$command = new EventCommand( $fs, $templates );
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
+		// Set up the stub file
+		$stubPath = $stubBasePath . '/event.stub';
+		$stubContent = '<?php namespace {{namespace}}; class {{class}} { {{properties}} public function __construct({{constructorParams}}) { {{constructorBody}} } }';
+		$fs->addFile( $stubPath, $stubContent );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateEvent' );
@@ -180,11 +180,18 @@ class EventCommandTest extends TestCase
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Set up template engine with stub content
-		$templates = new MemoryTemplateEngine();
-		$templates->addTemplate( 'event.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
+		$command = new EventCommand( $fs );
 
-		$command = new EventCommand( $fs, $templates );
+		// Get the actual stub path from the command
+		$reflection = new \ReflectionClass( $command );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
+
+		// Set up the stub file
+		$stubPath = $stubBasePath . '/event.stub';
+		$stubContent = '<?php namespace {{namespace}}; class {{class}} {}';
+		$fs->addFile( $stubPath, $stubContent );
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateEvent' );
@@ -221,8 +228,7 @@ class EventCommandTest extends TestCase
 		$fs->addDirectory( '/test-project/app/Events' );
 		$fs->addFile( '/test-project/app/Events/TestEvent.php', 'existing content' );
 
-		$templates = new MemoryTemplateEngine();
-		$command = new EventCommand( $fs, $templates );
+		$command = new EventCommand( $fs );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -246,150 +252,45 @@ class EventCommandTest extends TestCase
 		$this->assertFalse( $result );
 	}
 
-	public function testGenerateEventFailsWhenDirectoryCreationFails(): void
+	public function testLoadStubReturnsNullWhenFileDoesNotExist(): void
 	{
-		// Create a mock filesystem that fails to create directories
-		$fs = $this->createMock( \Neuron\Core\System\IFileSystem::class );
-		$fs->method( 'getcwd' )->willReturn( '/test-project' );
-		$fs->method( 'fileExists' )->willReturn( false );
-		$fs->method( 'isDir' )->willReturn( false );
-		$fs->method( 'mkdir' )->willReturn( false );
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/test-project' );
+		$command = new EventCommand( $fs );
 
-		$templates = new MemoryTemplateEngine();
-		$templates->addTemplate( 'event.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
-
-		$command = new EventCommand( $fs, $templates );
-
-		// Mock output
-		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
-		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
-		$outputProperty->setValue( $command, $output );
-
-		$method = $reflection->getMethod( 'generateEvent' );
+		$method = $reflection->getMethod( 'loadStub' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $command, 'TestEvent', 'App\\Events', [] );
+		$result = $method->invoke( $command, 'nonexistent.stub' );
 
-		$this->assertFalse( $result );
+		$this->assertNull( $result );
 	}
 
-	public function testGenerateEventFailsWhenStubNotFound(): void
+	public function testLoadStubReturnsContentWhenFileExists(): void
 	{
 		$fs = new MemoryFileSystem();
 		$fs->setCwd( '/test-project' );
 
-		// Don't add template to template engine - let it fail
-		$templates = new MemoryTemplateEngine();
+		$command = new EventCommand( $fs );
 
-		$command = new EventCommand( $fs, $templates );
-
-		// Mock output
-		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
+		// Get the actual stub path from the command
 		$reflection = new \ReflectionClass( $command );
-		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
-		$outputProperty->setValue( $command, $output );
+		$stubPathProperty = $reflection->getProperty( '_StubPath' );
+		$stubPathProperty->setAccessible( true );
+		$stubBasePath = $stubPathProperty->getValue( $command );
 
-		$method = $reflection->getMethod( 'generateEvent' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $command, 'TestEvent', 'App\\Events', [] );
-
-		$this->assertFalse( $result );
-	}
-
-	public function testGenerateEventFailsWhenFileWriteFails(): void
-	{
-		// Create a mock filesystem that fails to write files
-		$fs = $this->createMock( \Neuron\Core\System\IFileSystem::class );
-		$fs->method( 'getcwd' )->willReturn( '/test-project' );
-		$fs->method( 'fileExists' )->willReturn( false );
-		$fs->method( 'isDir' )->willReturn( true );
-		$fs->method( 'writeFile' )->willReturn( false );
-
-		$templates = new MemoryTemplateEngine();
-		$templates->addTemplate( 'event.stub', '<?php namespace {{namespace}}; class {{class}} {}' );
-
-		$command = new EventCommand( $fs, $templates );
-
-		// Mock output
-		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
-		$reflection = new \ReflectionClass( $command );
-		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
-		$outputProperty->setValue( $command, $output );
-
-		$method = $reflection->getMethod( 'generateEvent' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $command, 'TestEvent', 'App\\Events', [] );
-
-		$this->assertFalse( $result );
-	}
-
-	public function testParsePropertiesHandlesInvalidPropertyFormat(): void
-	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$templates = new MemoryTemplateEngine();
-		$command = new EventCommand( $fs, $templates );
+		// Set up the stub file
+		$stubPath = $stubBasePath . '/event.stub';
+		$stubContent = '<?php stub content';
+		$fs->addFile( $stubPath, $stubContent );
 
 		$reflection = new \ReflectionClass( $command );
-
-		// Mock input with invalid property (missing type)
-		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
-		$input->method( 'getOption' )->willReturn( ['userId', 'email:string'] );
-
-		// Mock output to capture warnings
-		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
-
-		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
-		$inputProperty->setValue( $command, $input );
-
-		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
-		$outputProperty->setValue( $command, $output );
-
-		$method = $reflection->getMethod( 'parseProperties' );
+		$method = $reflection->getMethod( 'loadStub' );
 		$method->setAccessible( true );
 
-		$result = $method->invoke( $command );
+		$result = $method->invoke( $command, 'event.stub' );
 
-		// Should only parse the valid property, skip the invalid one
-		$this->assertCount( 1, $result );
-		$this->assertEquals( 'email', $result[0]['name'] );
-		$this->assertEquals( 'string', $result[0]['type'] );
-	}
-
-	public function testParsePropertiesTrimsWhitespace(): void
-	{
-		$fs = new MemoryFileSystem();
-		$fs->setCwd( '/test-project' );
-		$templates = new MemoryTemplateEngine();
-		$command = new EventCommand( $fs, $templates );
-
-		$reflection = new \ReflectionClass( $command );
-
-		// Mock input with properties that have whitespace
-		$input = $this->createMock( \Neuron\Cli\Console\Input::class );
-		$input->method( 'getOption' )->willReturn( ' userId : int ' );
-
-		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
-		$inputProperty->setValue( $command, $input );
-
-		$method = $reflection->getMethod( 'parseProperties' );
-		$method->setAccessible( true );
-
-		$result = $method->invoke( $command );
-
-		$this->assertCount( 1, $result );
-		$this->assertEquals( 'userId', $result[0]['name'] );
-		$this->assertEquals( 'int', $result[0]['type'] );
+		$this->assertEquals( $stubContent, $result );
 	}
 }
-
-

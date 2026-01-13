@@ -3,6 +3,10 @@
 namespace Neuron\Scaffolding\Commands;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\System\IFileSystem;
+use Neuron\Core\System\RealFileSystem;
+use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Services\FileTemplateEngine;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -12,12 +16,21 @@ use Symfony\Component\Yaml\Yaml;
 class ListenerCommand extends Command
 {
 	private string $_ProjectPath;
-	private string $_StubPath;
+	private IFileSystem $fs;
+	private ITemplateEngine $templates;
 
-	public function __construct()
+	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
-		$this->_ProjectPath = getcwd();
-		$this->_StubPath = __DIR__ . '/../Stubs';
+		$this->fs = $fs ?? new RealFileSystem();
+		$this->_ProjectPath = $this->fs->getcwd();
+
+		// Default to FileTemplateEngine if not provided
+		if( $templates === null )
+		{
+			$stubPath = __DIR__ . '/../Stubs';
+			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+		}
+		$this->templates = $templates;
 	}
 
 	/**
@@ -111,7 +124,7 @@ class ListenerCommand extends Command
 		$listenerFile = $listenerDir . '/' . $listenerName . '.php';
 
 		// Check if exists
-		if( file_exists( $listenerFile ) && !$this->input->hasOption( 'force' ) )
+		if( $this->fs->fileExists( $listenerFile ) && !$this->input->hasOption( 'force' ) )
 		{
 			$this->output->error( "Listener already exists: {$listenerFile}" );
 			$this->output->info( 'Use --force to overwrite' );
@@ -119,18 +132,17 @@ class ListenerCommand extends Command
 		}
 
 		// Create directory
-		if( !is_dir( $listenerDir ) )
+		if( !$this->fs->isDir( $listenerDir ) )
 		{
-			if( !mkdir( $listenerDir, 0755, true ) )
+			if( !$this->fs->mkdir( $listenerDir, 0755, true ) )
 			{
 				$this->output->error( "Could not create directory: {$listenerDir}" );
 				return false;
 			}
 		}
 
-		// Load stub
-		$stub = $this->loadStub( 'listener.stub' );
-		if( !$stub )
+		// Load stub and replace placeholders
+		if( !$this->templates->exists( 'listener.stub' ) )
 		{
 			$this->output->error( 'Could not load listener stub' );
 			return false;
@@ -139,15 +151,16 @@ class ListenerCommand extends Command
 		// Extract event name from class
 		$eventName = $this->getClassName( $eventClass );
 
-		// Replace placeholders
-		$content = str_replace(
-			[ '{{namespace}}', '{{class}}', '{{eventClass}}', '{{eventName}}' ],
-			[ $namespace, $listenerName, $eventClass, $eventName ],
-			$stub
-		);
+		// Render template
+		$content = $this->templates->render( 'listener.stub', [
+			'namespace' => $namespace,
+			'class' => $listenerName,
+			'eventClass' => $eventClass,
+			'eventName' => $eventName
+		] );
 
 		// Write file
-		if( file_put_contents( $listenerFile, $content ) === false )
+		if( $this->fs->writeFile( $listenerFile, $content ) === false )
 		{
 			$this->output->error( 'Could not write listener file' );
 			return false;
@@ -166,9 +179,9 @@ class ListenerCommand extends Command
 		$configFile = $configPath . '/event-listeners.yaml';
 
 		// Ensure config directory exists
-		if( !is_dir( $configPath ) )
+		if( !$this->fs->isDir( $configPath ) )
 		{
-			if( !mkdir( $configPath, 0755, true ) )
+			if( !$this->fs->mkdir( $configPath, 0755, true ) )
 			{
 				$this->output->error( "Could not create config directory: {$configPath}" );
 				return false;
@@ -178,11 +191,11 @@ class ListenerCommand extends Command
 		// Load existing config or create new
 		$config = [ 'events' => [] ];
 
-		if( file_exists( $configFile ) )
+		if( $this->fs->fileExists( $configFile ) )
 		{
 			try
 			{
-				$existingConfig = Yaml::parseFile( $configFile );
+				$existingConfig = Yaml::parse( $this->fs->readFile( $configFile ) );
 				if( isset( $existingConfig['events'] ) )
 				{
 					$config = $existingConfig;
@@ -227,7 +240,7 @@ class ListenerCommand extends Command
 		try
 		{
 			$yaml = Yaml::dump( $config, 4, 2 );
-			if( file_put_contents( $configFile, $yaml ) === false )
+			if( $this->fs->writeFile( $configFile, $yaml ) === false )
 			{
 				$this->output->error( 'Could not write event-listeners.yaml' );
 				return false;
@@ -259,20 +272,5 @@ class ListenerCommand extends Command
 	{
 		$parts = explode( '\\', $fqcn );
 		return end( $parts );
-	}
-
-	/**
-	 * Load a stub file
-	 */
-	private function loadStub( string $name ): ?string
-	{
-		$stubFile = $this->_StubPath . '/' . $name;
-
-		if( !file_exists( $stubFile ) )
-		{
-			return null;
-		}
-
-		return file_get_contents( $stubFile );
 	}
 }

@@ -3,6 +3,10 @@
 namespace Neuron\Scaffolding\Commands;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\System\IFileSystem;
+use Neuron\Core\System\RealFileSystem;
+use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Services\FileTemplateEngine;
 
 /**
  * CLI command for generating initializer classes.
@@ -10,12 +14,21 @@ use Neuron\Cli\Commands\Command;
 class InitializerCommand extends Command
 {
 	private string $_ProjectPath;
-	private string $_StubPath;
+	private IFileSystem $fs;
+	private ITemplateEngine $templates;
 
-	public function __construct()
+	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
-		$this->_ProjectPath = getcwd();
-		$this->_StubPath = __DIR__ . '/../Stubs';
+		$this->fs = $fs ?? new RealFileSystem();
+		$this->_ProjectPath = $this->fs->getcwd();
+
+		// Default to FileTemplateEngine if not provided
+		if( $templates === null )
+		{
+			$stubPath = __DIR__ . '/../Stubs';
+			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+		}
+		$this->templates = $templates;
 	}
 
 	/**
@@ -90,7 +103,7 @@ class InitializerCommand extends Command
 		$initializerFile = $initializerDir . '/' . $initializerName . '.php';
 
 		// Check if exists
-		if( file_exists( $initializerFile ) && !$this->input->hasOption( 'force' ) )
+		if( $this->fs->fileExists( $initializerFile ) && !$this->input->hasOption( 'force' ) )
 		{
 			$this->output->error( "Initializer already exists: {$initializerFile}" );
 			$this->output->info( 'Use --force to overwrite' );
@@ -98,32 +111,30 @@ class InitializerCommand extends Command
 		}
 
 		// Create directory
-		if( !is_dir( $initializerDir ) )
+		if( !$this->fs->isDir( $initializerDir ) )
 		{
-			if( !mkdir( $initializerDir, 0755, true ) )
+			if( !$this->fs->mkdir( $initializerDir, 0755, true ) )
 			{
 				$this->output->error( "Could not create directory: {$initializerDir}" );
 				return false;
 			}
 		}
 
-		// Load stub
-		$stub = $this->loadStub( 'initializer.stub' );
-		if( !$stub )
+		// Load stub and replace placeholders
+		if( !$this->templates->exists( 'initializer.stub' ) )
 		{
 			$this->output->error( 'Could not load initializer stub' );
 			return false;
 		}
 
-		// Replace placeholders
-		$content = str_replace(
-			[ '{{namespace}}', '{{class}}' ],
-			[ $namespace, $initializerName ],
-			$stub
-		);
+		// Render template
+		$content = $this->templates->render( 'initializer.stub', [
+			'namespace' => $namespace,
+			'class' => $initializerName
+		] );
 
 		// Write file
-		if( file_put_contents( $initializerFile, $content ) === false )
+		if( $this->fs->writeFile( $initializerFile, $content ) === false )
 		{
 			$this->output->error( 'Could not write initializer file' );
 			return false;
@@ -131,20 +142,5 @@ class InitializerCommand extends Command
 
 		$this->output->success( "Created initializer: {$initializerFile}" );
 		return true;
-	}
-
-	/**
-	 * Load a stub file
-	 */
-	private function loadStub( string $name ): ?string
-	{
-		$stubFile = $this->_StubPath . '/' . $name;
-
-		if( !file_exists( $stubFile ) )
-		{
-			return null;
-		}
-
-		return file_get_contents( $stubFile );
 	}
 }

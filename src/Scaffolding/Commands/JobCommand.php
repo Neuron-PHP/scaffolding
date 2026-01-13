@@ -3,6 +3,10 @@
 namespace Neuron\Scaffolding\Commands;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\System\IFileSystem;
+use Neuron\Core\System\RealFileSystem;
+use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Services\FileTemplateEngine;
 use Symfony\Component\Yaml\Yaml;
 use Cron\CronExpression;
 
@@ -13,12 +17,21 @@ use Cron\CronExpression;
 class JobCommand extends Command
 {
 	private string $_ProjectPath;
-	private string $_StubPath;
+	private IFileSystem $fs;
+	private ITemplateEngine $templates;
 
-	public function __construct()
+	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
-		$this->_ProjectPath = getcwd();
-		$this->_StubPath = __DIR__ . '/../Stubs';
+		$this->fs = $fs ?? new RealFileSystem();
+		$this->_ProjectPath = $this->fs->getcwd();
+
+		// Default to FileTemplateEngine if not provided
+		if( $templates === null )
+		{
+			$stubPath = __DIR__ . '/../Stubs';
+			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+		}
+		$this->templates = $templates;
 	}
 
 	/**
@@ -152,7 +165,7 @@ class JobCommand extends Command
 		$jobFile = $jobDir . '/' . $jobName . '.php';
 
 		// Check if exists
-		if( file_exists( $jobFile ) && !$this->input->hasOption( 'force' ) )
+		if( $this->fs->fileExists( $jobFile ) && !$this->input->hasOption( 'force' ) )
 		{
 			$this->output->error( "Job already exists: {$jobFile}" );
 			$this->output->info( 'Use --force to overwrite' );
@@ -160,18 +173,17 @@ class JobCommand extends Command
 		}
 
 		// Create directory
-		if( !is_dir( $jobDir ) )
+		if( !$this->fs->isDir( $jobDir ) )
 		{
-			if( !mkdir( $jobDir, 0755, true ) )
+			if( !$this->fs->mkdir( $jobDir, 0755, true ) )
 			{
 				$this->output->error( "Could not create directory: {$jobDir}" );
 				return false;
 			}
 		}
 
-		// Load stub
-		$stub = $this->loadStub( 'job.stub' );
-		if( !$stub )
+		// Load stub and replace placeholders
+		if( !$this->templates->exists( 'job.stub' ) )
 		{
 			$this->output->error( 'Could not load job stub' );
 			return false;
@@ -180,15 +192,15 @@ class JobCommand extends Command
 		// Generate snake_case job name
 		$jobNameSnake = $this->toSnakeCase( $jobName );
 
-		// Replace placeholders
-		$content = str_replace(
-			[ '{{namespace}}', '{{class}}', '{{jobName}}' ],
-			[ $namespace, $jobName, $jobNameSnake ],
-			$stub
-		);
+		// Render template
+		$content = $this->templates->render( 'job.stub', [
+			'namespace' => $namespace,
+			'class' => $jobName,
+			'jobName' => $jobNameSnake
+		] );
 
 		// Write file
-		if( file_put_contents( $jobFile, $content ) === false )
+		if( $this->fs->writeFile( $jobFile, $content ) === false )
 		{
 			$this->output->error( 'Could not write job file' );
 			return false;
@@ -207,9 +219,9 @@ class JobCommand extends Command
 		$scheduleFile = $configDir . '/schedule.yaml';
 
 		// Ensure config directory exists
-		if( !is_dir( $configDir ) )
+		if( !$this->fs->isDir( $configDir ) )
 		{
-			if( !mkdir( $configDir, 0755, true ) )
+			if( !$this->fs->mkdir( $configDir, 0755, true ) )
 			{
 				$this->output->error( "Could not create config directory: {$configDir}" );
 				return false;
@@ -219,14 +231,18 @@ class JobCommand extends Command
 		// Load existing schedule or create new
 		$config = [ 'schedule' => [] ];
 
-		if( file_exists( $scheduleFile ) )
+		if( $this->fs->fileExists( $scheduleFile ) )
 		{
 			try
 			{
-				$existingConfig = Yaml::parseFile( $scheduleFile );
-				if( isset( $existingConfig['schedule'] ) )
+				$scheduleContent = $this->fs->readFile( $scheduleFile );
+				if( $scheduleContent !== false )
 				{
-					$config = $existingConfig;
+					$existingConfig = Yaml::parse( $scheduleContent );
+					if( isset( $existingConfig['schedule'] ) )
+					{
+						$config = $existingConfig;
+					}
 				}
 			}
 			catch( \Exception $e )
@@ -262,7 +278,7 @@ class JobCommand extends Command
 		try
 		{
 			$yaml = Yaml::dump( $config, 4, 2 );
-			if( file_put_contents( $scheduleFile, $yaml ) === false )
+			if( $this->fs->writeFile( $scheduleFile, $yaml ) === false )
 			{
 				$this->output->error( 'Could not write schedule.yaml' );
 				return false;
@@ -286,20 +302,5 @@ class JobCommand extends Command
 		// Insert underscores before uppercase letters and convert to lowercase
 		$snake = preg_replace( '/(?<!^)[A-Z]/', '_$0', $string );
 		return strtolower( $snake ?? '' );
-	}
-
-	/**
-	 * Load a stub file
-	 */
-	private function loadStub( string $name ): ?string
-	{
-		$stubFile = $this->_StubPath . '/' . $name;
-
-		if( !file_exists( $stubFile ) )
-		{
-			return null;
-		}
-
-		return file_get_contents( $stubFile );
 	}
 }

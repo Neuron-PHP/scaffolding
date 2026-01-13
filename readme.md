@@ -1,3 +1,5 @@
+[![CI](https://github.com/Neuron-PHP/scaffolding/actions/workflows/ci.yml/badge.svg)](https://github.com/Neuron-PHP/scaffolding/actions)
+[![codecov](https://codecov.io/gh/Neuron-PHP/scaffolding/branch/develop/graph/badge.svg)](https://codecov.io/gh/Neuron-PHP/scaffolding)
 # Neuron Scaffolding
 
 Code generators and scaffolding tools for the Neuron PHP framework.

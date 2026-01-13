@@ -3,6 +3,10 @@
 namespace Neuron\Scaffolding\Commands;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\System\IFileSystem;
+use Neuron\Core\System\RealFileSystem;
+use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Services\FileTemplateEngine;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -14,13 +18,22 @@ use Symfony\Component\Yaml\Yaml;
 class ControllerCommand extends Command
 {
 	private string $_ProjectPath;
-	private string $_StubPath;
 	private array $_Messages = [];
+	private IFileSystem $fs;
+	private ITemplateEngine $templates;
 
-	public function __construct()
+	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
-		$this->_ProjectPath = getcwd();
-		$this->_StubPath = __DIR__ . '/../Stubs';
+		$this->fs = $fs ?? new RealFileSystem();
+		$this->_ProjectPath = $this->fs->getcwd();
+
+		// Default to FileTemplateEngine if not provided
+		if( $templates === null )
+		{
+			$stubPath = __DIR__ . '/../Stubs';
+			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+		}
+		$this->templates = $templates;
 	}
 
 	/**
@@ -171,7 +184,7 @@ class ControllerCommand extends Command
 		$controllerFile = $controllerDir . '/' . $info['class'] . '.php';
 
 		// Check if exists
-		if( file_exists( $controllerFile ) && !$this->input->hasOption( 'force' ) )
+		if( $this->fs->fileExists( $controllerFile ) && !$this->input->hasOption( 'force' ) )
 		{
 			$this->output->error( "Controller already exists: {$controllerFile}" );
 			$this->output->info( '   Use --force to overwrite' );
@@ -180,20 +193,19 @@ class ControllerCommand extends Command
 
 		// Load stub
 		$stubFile = $info['isApi'] ? 'controller.api.stub' : 'controller.resource.stub';
-		$stub = $this->loadStub( $stubFile );
-		if( !$stub )
+		if( !$this->templates->exists( $stubFile ) )
 		{
 			$this->output->error( "Could not load stub file: {$stubFile}" );
 			return false;
 		}
 
 		// Replace placeholders
-		$content = $this->replacePlaceholders( $stub, array_merge( $info, ['namespace' => $namespace] ) );
+		$content = $this->templates->render( $stubFile, array_merge( $info, ['namespace' => $namespace] ) );
 
 		// Create directory
-		if( !is_dir( $controllerDir ) )
+		if( !$this->fs->isDir( $controllerDir ) )
 		{
-			if( !mkdir( $controllerDir, 0755, true ) )
+			if( !$this->fs->mkdir( $controllerDir, 0755, true ) )
 			{
 				$this->output->error( "Could not create directory: {$controllerDir}" );
 				return false;
@@ -201,7 +213,7 @@ class ControllerCommand extends Command
 		}
 
 		// Write file
-		if( file_put_contents( $controllerFile, $content ) === false )
+		if( $this->fs->writeFile( $controllerFile, $content ) === false )
 		{
 			$this->output->error( 'Could not write controller file' );
 			return false;
@@ -219,9 +231,9 @@ class ControllerCommand extends Command
 		$viewsDir = $this->_ProjectPath . '/resources/views/' . strtolower( $info['models'] );
 
 		// Create views directory
-		if( !is_dir( $viewsDir ) )
+		if( !$this->fs->isDir( $viewsDir ) )
 		{
-			if( !mkdir( $viewsDir, 0755, true ) )
+			if( !$this->fs->mkdir( $viewsDir, 0755, true ) )
 			{
 				$this->output->error( "Could not create views directory: {$viewsDir}" );
 				return false;
@@ -235,25 +247,25 @@ class ControllerCommand extends Command
 			$viewFile = $viewsDir . '/' . $view . '.php';
 
 			// Check if exists
-			if( file_exists( $viewFile ) && !$this->input->hasOption( 'force' ) )
+			if( $this->fs->fileExists( $viewFile ) && !$this->input->hasOption( 'force' ) )
 			{
 				$this->output->warning( "View already exists, skipping: {$viewFile}" );
 				continue;
 			}
 
 			// Load stub
-			$stub = $this->loadStub( 'view.' . $view . '.stub' );
-			if( !$stub )
+			$stubFile = 'view.' . $view . '.stub';
+			if( !$this->templates->exists( $stubFile ) )
 			{
-				$this->output->error( "Could not load view stub: view.{$view}.stub" );
+				$this->output->error( "Could not load view stub: {$stubFile}" );
 				return false;
 			}
 
 			// Replace placeholders
-			$content = $this->replacePlaceholders( $stub, $info );
+			$content = $this->templates->render( $stubFile, $info );
 
 			// Write file
-			if( file_put_contents( $viewFile, $content ) === false )
+			if( $this->fs->writeFile( $viewFile, $content ) === false )
 			{
 				$this->output->error( "Could not write view file: {$viewFile}" );
 				return false;
@@ -274,9 +286,9 @@ class ControllerCommand extends Command
 		$routesFile = $configDir . '/routes.yaml';
 
 		// Create config directory if it doesn't exist
-		if( !is_dir( $configDir ) )
+		if( !$this->fs->isDir( $configDir ) )
 		{
-			if( !mkdir( $configDir, 0755, true ) )
+			if( !$this->fs->mkdir( $configDir, 0755, true ) )
 			{
 				$this->output->error( "Could not create config directory: {$configDir}" );
 				return false;
@@ -284,12 +296,12 @@ class ControllerCommand extends Command
 		}
 
 		// Initialize routes file if it doesn't exist
-		if( !file_exists( $routesFile ) )
+		if( !$this->fs->fileExists( $routesFile ) )
 		{
 			$this->output->warning( "Routes file not found, creating: {$routesFile}" );
 			$initialData = ['routes' => []];
 			$yaml = Yaml::dump( $initialData, 2, 2 );
-			if( file_put_contents( $routesFile, $yaml ) === false )
+			if( $this->fs->writeFile( $routesFile, $yaml ) === false )
 			{
 				$this->output->error( "Could not create routes file: {$routesFile}" );
 				return false;
@@ -299,7 +311,13 @@ class ControllerCommand extends Command
 		// Load existing routes
 		try
 		{
-			$data = Yaml::parseFile( $routesFile );
+			$routesContent = $this->fs->readFile( $routesFile );
+			if( $routesContent === false )
+			{
+				$this->output->error( "Could not read routes file: {$routesFile}" );
+				return false;
+			}
+			$data = Yaml::parse( $routesContent );
 		}
 		catch( \Exception $e )
 		{
@@ -400,7 +418,7 @@ class ControllerCommand extends Command
 		try
 		{
 			$yaml = Yaml::dump( $data, 10, 2 );
-			if( file_put_contents( $routesFile, $yaml ) === false )
+			if( $this->fs->writeFile( $routesFile, $yaml ) === false )
 			{
 				$this->output->error( 'Could not write routes file' );
 				return false;
@@ -417,31 +435,6 @@ class ControllerCommand extends Command
 		return true;
 	}
 
-	/**
-	 * Load stub file
-	 */
-	private function loadStub( string $filename ): ?string
-	{
-		$path = $this->_StubPath . '/' . $filename;
-		if( !file_exists( $path ) )
-		{
-			return null;
-		}
-		return file_get_contents( $path );
-	}
-
-	/**
-	 * Replace placeholders in stub content
-	 */
-	private function replacePlaceholders( string $content, array $replacements ): string
-	{
-		foreach( $replacements as $key => $value )
-		{
-			// Convert null to empty string for PHP 8.4 compatibility
-			$content = str_replace( '{{' . $key . '}}', $value ?? '', $content );
-		}
-		return $content;
-	}
 
 	/**
 	 * Simple pluralization

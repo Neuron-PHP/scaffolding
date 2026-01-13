@@ -3,6 +3,10 @@
 namespace Neuron\Scaffolding\Commands;
 
 use Neuron\Cli\Commands\Command;
+use Neuron\Core\System\IFileSystem;
+use Neuron\Core\System\RealFileSystem;
+use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Services\FileTemplateEngine;
 
 /**
  * Generate email template files
@@ -10,12 +14,22 @@ use Neuron\Cli\Commands\Command;
 class EmailCommand extends Command
 {
 	private string $_projectPath;
-	private string $_componentPath;
+	private IFileSystem $fs;
+	private ITemplateEngine $templates;
 
-	public function __construct()
+	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
-		$this->_projectPath = getcwd();
-		$this->_componentPath = dirname( dirname( dirname( dirname( dirname( __DIR__ ) ) ) ) );
+		$this->fs = $fs ?? new RealFileSystem();
+		$this->_projectPath = $this->fs->getcwd();
+
+		// Default to FileTemplateEngine if not provided
+		if( $templates === null )
+		{
+			$componentPath = dirname( dirname( dirname( dirname( dirname( __DIR__ ) ) ) ) );
+			$stubPath = $componentPath . '/src/Cms/Cli/Commands/Generate/stubs';
+			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+		}
+		$this->templates = $templates;
 	}
 
 	/**
@@ -92,9 +106,9 @@ class EmailCommand extends Command
 		$emailsDir = $this->_projectPath . '/resources/views/emails';
 
 		// Create emails directory if it doesn't exist
-		if( !is_dir( $emailsDir ) )
+		if( !$this->fs->isDir( $emailsDir ) )
 		{
-			if( !mkdir( $emailsDir, 0755, true ) )
+			if( !$this->fs->mkdir( $emailsDir, 0755, true ) )
 			{
 				$this->output->error( "Failed to create emails directory" );
 				return false;
@@ -104,53 +118,43 @@ class EmailCommand extends Command
 		$filePath = $emailsDir . '/' . $name . '.php';
 
 		// Check if file already exists
-		if( file_exists( $filePath ) )
+		if( $this->fs->fileExists( $filePath ) )
 		{
 			$this->output->error( "Template already exists: resources/views/emails/{$name}.php" );
 			return false;
 		}
 
-		// Load stub template
-		$stubPath = $this->_componentPath . '/src/Cms/Cli/Commands/Generate/stubs/email.stub';
-
-		if( !file_exists( $stubPath ) )
+		// Check if stub template exists
+		if( !$this->templates->exists( 'email.stub' ) )
 		{
-			$this->output->error( "Stub template not found: {$stubPath}" );
+			$this->output->error( "Stub template not found: email.stub" );
 			return false;
 		}
-
-		$content = file_get_contents( $stubPath );
 
 		// Create title from name (e.g., "welcome" -> "Welcome", "password-reset" -> "Password Reset")
 		$title = ucwords( str_replace( '-', ' ', $name ) );
 
-		// Replace placeholders
-		$replacements = [
-			'title' => $title,
-			'content' => '<p>Your email content goes here.</p>'
-		];
-
-		$content = $this->replacePlaceholders( $content, $replacements );
+		// Render template with data
+		try
+		{
+			$content = $this->templates->render( 'email.stub', [
+				'title' => $title,
+				'content' => '<p>Your email content goes here.</p>'
+			] );
+		}
+		catch( \Exception $e )
+		{
+			$this->output->error( "Failed to render template: " . $e->getMessage() );
+			return false;
+		}
 
 		// Write the file
-		if( file_put_contents( $filePath, $content ) === false )
+		if( $this->fs->writeFile( $filePath, $content ) === false )
 		{
 			$this->output->error( "Failed to create template file" );
 			return false;
 		}
 
 		return true;
-	}
-
-	/**
-	 * Replace placeholders in content
-	 */
-	private function replacePlaceholders( string $content, array $replacements ): string
-	{
-		foreach( $replacements as $key => $value )
-		{
-			$content = str_replace( '{{' . $key . '}}', $value ?? '', $content );
-		}
-		return $content;
 	}
 }
