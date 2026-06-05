@@ -58,7 +58,6 @@ class ListenerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateListener' );
-		$method->setAccessible( true );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -66,11 +65,9 @@ class ListenerCommandTest extends TestCase
 		$input->method( 'hasOption' )->willReturn( false );
 
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$result = $method->invoke( $command, 'SendWelcomeEmail', 'App\\Listeners', 'App\\Events\\UserRegistered' );
@@ -102,7 +99,6 @@ class ListenerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateListener' );
-		$method->setAccessible( true );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -110,11 +106,9 @@ class ListenerCommandTest extends TestCase
 		$input->method( 'hasOption' )->willReturn( false );
 
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$result = $method->invoke( $command, 'TestListener', 'App\\Listeners', 'App\\Events\\TestEvent' );
@@ -145,15 +139,12 @@ class ListenerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$method = $reflection->getMethod( 'generateListener' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestListener', 'App\\Listeners', 'App\\Events\\TestEvent' );
 
@@ -174,11 +165,9 @@ class ListenerCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'generateListener' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestListener', 'App\\Listeners', 'App\\Events\\TestEvent' );
 
@@ -198,12 +187,10 @@ class ListenerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'updateEventListeners' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command, 'App\\Events\\UserRegistered', 'App\\Listeners\\SendWelcomeEmail' );
@@ -236,12 +223,10 @@ class ListenerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'updateEventListeners' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command, 'App\\Events\\UserRegistered', 'App\\Listeners\\SendWelcomeEmail' );
@@ -269,12 +254,10 @@ class ListenerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'updateEventListeners' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command, 'App\\Events\\UserRegistered', 'App\\Listeners\\SendWelcomeEmail' );
@@ -296,7 +279,6 @@ class ListenerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateEventKey' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'App\\Events\\UserRegistered' );
 
@@ -312,7 +294,6 @@ class ListenerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'getClassName' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'App\\Events\\UserRegistered' );
 
@@ -337,11 +318,9 @@ class ListenerCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'generateListener' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestListener', 'App\\Listeners', 'App\\Events\\TestEvent' );
 
@@ -366,11 +345,9 @@ class ListenerCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'generateListener' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestListener', 'App\\Listeners', 'App\\Events\\TestEvent' );
 
@@ -389,12 +366,10 @@ class ListenerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'updateEventListeners' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command, 'App\\Events\\TestEvent', 'App\\Listeners\\TestListener' );
@@ -421,11 +396,9 @@ class ListenerCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'updateEventListeners' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'App\\Events\\TestEvent', 'App\\Listeners\\TestListener' );
 
@@ -446,12 +419,10 @@ class ListenerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'updateEventListeners' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command, 'App\\Events\\TestEvent', 'App\\Listeners\\TestListener' );
@@ -475,11 +446,9 @@ class ListenerCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'updateEventListeners' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'App\\Events\\TestEvent', 'App\\Listeners\\TestListener' );
 

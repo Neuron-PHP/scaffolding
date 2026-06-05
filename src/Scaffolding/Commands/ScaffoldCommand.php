@@ -5,15 +5,22 @@ namespace Neuron\Scaffolding\Commands;
 use Neuron\Cli\Commands\Command;
 use Neuron\Core\System\IFileSystem;
 use Neuron\Core\System\RealFileSystem;
+use Neuron\Data\Settings\SettingManager;
 use Neuron\Scaffolding\Contracts\ITemplateEngine;
+use Neuron\Scaffolding\Schema\Connection;
+use Neuron\Scaffolding\Schema\Field;
+use Neuron\Scaffolding\Schema\FieldSet;
+use Neuron\Scaffolding\Schema\SchemaIntrospector;
 use Neuron\Scaffolding\Services\FileTemplateEngine;
-use Symfony\Component\Yaml\Yaml;
+use Neuron\Scaffolding\Services\ResourceScaffolder;
 
 /**
- * CLI command for generating complete CRUD scaffolds.
+ * CLI command for generating a complete Neuron ORM CRUD scaffold.
  *
- * Generates controller, views, routes, and optionally migrations.
- * Similar to Rails' scaffold generator for rapid prototyping.
+ * Emits a model, DTO YAML, repository (interface + implementation),
+ * attribute-routed controller, field-aware views and (for new tables) a
+ * migration. Fields come from a `--fields` spec or from introspecting an
+ * existing table via `--from-table`.
  */
 class ScaffoldCommand extends Command
 {
@@ -22,19 +29,20 @@ class ScaffoldCommand extends Command
 	private bool $_HasMvcComponent = false;
 	private IFileSystem $fs;
 	private ITemplateEngine $templates;
+	private ResourceScaffolder $scaffolder;
 
 	public function __construct( ?IFileSystem $fs = null, ?ITemplateEngine $templates = null )
 	{
 		$this->fs = $fs ?? new RealFileSystem();
 		$this->_ProjectPath = $this->fs->getcwd();
 
-		// Default to FileTemplateEngine if not provided
 		if( $templates === null )
 		{
-			$stubPath = __DIR__ . '/../Stubs';
-			$templates = new FileTemplateEngine( $this->fs, $stubPath );
+			$templates = new FileTemplateEngine( $this->fs, __DIR__ . '/../Stubs' );
 		}
 		$this->templates = $templates;
+
+		$this->scaffolder = new ResourceScaffolder( $this->fs, $this->templates, $this->_ProjectPath );
 
 		$this->_HasMvcComponent = class_exists( '\\Neuron\\Mvc\\Database\\MigrationManager' );
 	}
@@ -52,7 +60,7 @@ class ScaffoldCommand extends Command
 	 */
 	public function getDescription(): string
 	{
-		return 'Generate complete CRUD scaffold (controller, views, routes, migration)';
+		return 'Generate a complete Neuron ORM CRUD scaffold (model, DTO, repository, controller, views, migration)';
 	}
 
 	/**
@@ -62,11 +70,13 @@ class ScaffoldCommand extends Command
 	{
 		$this->addArgument( 'name', true, 'Resource name (e.g., Post or Admin/Post)' );
 		$this->addOption( 'fields', 'f', true, 'Field definitions (e.g., "title:string,body:text,published:boolean")' );
+		$this->addOption( 'from-table', null, true, 'Introspect an existing table for fields (e.g., jud_docket)' );
 		$this->addOption( 'namespace', null, true, 'Controller namespace', 'App\\Controllers' );
+		$this->addOption( 'model-namespace', null, true, 'Model namespace', 'App\\Models' );
+		$this->addOption( 'repo-namespace', null, true, 'Repository namespace', 'App\\Repositories' );
 		$this->addOption( 'api', null, false, 'Generate API controller (JSON responses, no views)' );
 		$this->addOption( 'no-migration', null, false, 'Skip migration generation' );
-		$this->addOption( 'filter', null, true, 'Route filter (e.g., auth)' );
-		$this->addOption( 'force', 'f', false, 'Overwrite existing files' );
+		$this->addOption( 'force', null, false, 'Overwrite existing files' );
 	}
 
 	/**
@@ -75,10 +85,9 @@ class ScaffoldCommand extends Command
 	public function execute( array $Parameters = [] ): int
 	{
 		$this->output->info( "\n╔═══════════════════════════════════════╗" );
-		$this->output->info( "║  Full Stack Scaffold Generator        ║" );
+		$this->output->info( "║  Neuron ORM CRUD Scaffold Generator   ║" );
 		$this->output->info( "╚═══════════════════════════════════════╝\n" );
 
-		// Get resource name
 		$resourceName = $this->input->getArgument( 'name' );
 		if( empty( $resourceName ) )
 		{
@@ -86,116 +95,278 @@ class ScaffoldCommand extends Command
 			return 1;
 		}
 
-		// Parse resource info
-		$info = $this->parseResourceName( $resourceName );
-		$info['namespace'] = $this->input->getOption( 'namespace', 'App\\Controllers' );
-		$info['filter'] = $this->input->getOption( 'filter' );
-		$info['isApi'] = $this->input->hasOption( 'api' );
-		$info['fields'] = $this->input->getOption( 'fields', '' );
+		$info = $this->buildInfo( $resourceName );
+		$force = $this->input->hasOption( 'force' );
 
-		// Generate migration (if enabled and MVC available)
-		if( !$this->input->hasOption( 'no-migration' ) )
+		// Resolve the field set (from an existing table, or a --fields spec).
+		try
 		{
-			if( $this->_HasMvcComponent )
+			$fields = $this->resolveFieldSet( $info );
+		}
+		catch( \Exception $e )
+		{
+			$this->output->error( 'Could not resolve fields: ' . $e->getMessage() );
+			return 1;
+		}
+
+		$info = $this->applyFieldConventions( $info, $fields );
+
+		$fromTable = $this->input->hasOption( 'from-table' );
+
+		try
+		{
+			// Migration is only meaningful for new tables.
+			if( !$fromTable && !$this->input->hasOption( 'no-migration' ) )
 			{
-				if( !$this->generateMigration( $info ) )
+				if( $this->_HasMvcComponent )
 				{
-					return 1;
+					if( !$this->generateMigration( $info ) )
+					{
+						return 1;
+					}
+				}
+				else
+				{
+					$this->output->warning( 'MVC component not installed - skipping migration generation' );
+					$this->output->info( '   Install via: composer require neuron-php/mvc' );
 				}
 			}
-			else
+			elseif( $fromTable )
 			{
-				$this->output->warning( 'MVC component not installed - skipping migration generation' );
-				$this->output->info( '   Install via: composer require neuron-php/mvc' );
+				$this->output->info( "Using existing table '{$info['tableName']}' - migration skipped." );
+			}
+
+			$this->_Messages[] = 'Created model: ' . $this->scaffolder->generateModel( $info, $fields, $force );
+			$this->_Messages[] = 'Created DTO: ' . $this->scaffolder->generateDto( $info, $fields, $force );
+
+			foreach( $this->scaffolder->generateRepository( $info, $force ) as $file )
+			{
+				$this->_Messages[] = 'Created repository: ' . $file;
+			}
+
+			$this->_Messages[] = 'Created controller: ' . $this->scaffolder->generateController( $info, $force );
+
+			if( !$info['isApi'] )
+			{
+				foreach( $this->scaffolder->generateViews( $info, $fields, $force ) as $file )
+				{
+					$this->_Messages[] = 'Created view: ' . $file;
+				}
 			}
 		}
-
-		// Generate controller
-		if( !$this->generateController( $info ) )
+		catch( \RuntimeException $e )
 		{
+			$this->output->error( $e->getMessage() );
 			return 1;
 		}
 
-		// Generate views (unless --no-views or --api)
-		if( !$info['isApi'] )
-		{
-			if( !$this->generateViews( $info ) )
-			{
-				return 1;
-			}
-		}
-
-		// Generate routes
-		if( !$this->generateRoutes( $info ) )
-		{
-			return 1;
-		}
-
-		// Show summary
-		$this->output->newLine();
-		$this->output->success( 'Scaffold generated successfully!' );
-		$this->output->newLine();
-		foreach( $this->_Messages as $message )
-		{
-			$this->output->info( "  ✓ " . $message );
-		}
-
-		// Show next steps
-		$this->output->newLine();
-		$this->output->info( "Next steps:" );
-		if( !$this->input->hasOption( 'no-migration' ) && $this->_HasMvcComponent )
-		{
-			$this->output->info( "  1. Run migration: ./vendor/bin/neuron db:migrate:run" );
-			$this->output->info( "  2. Start dev server: php -S localhost:8000 -t public" );
-			$this->output->info( "  3. Visit: http://localhost:8000{$info['routePrefix']}" );
-		}
-		else
-		{
-			$this->output->info( "  1. Start dev server: php -S localhost:8000 -t public" );
-			$this->output->info( "  2. Visit: http://localhost:8000{$info['routePrefix']}" );
-		}
-		$this->output->newLine();
+		$this->printSummary( $info );
 
 		return 0;
 	}
 
 	/**
-	 * Parse resource name into components
+	 * Build the placeholder/info array for the resource.
+	 */
+	private function buildInfo( string $resourceName ): array
+	{
+		$info = $this->parseResourceName( $resourceName );
+
+		$info['namespace']      = $this->input->getOption( 'namespace', 'App\\Controllers' );
+		$info['modelNamespace'] = $this->input->getOption( 'model-namespace', 'App\\Models' );
+		$info['repoNamespace']  = $this->input->getOption( 'repo-namespace', 'App\\Repositories' );
+		$info['isApi']          = $this->input->hasOption( 'api' );
+		$info['fields']         = $this->input->getOption( 'fields', '' );
+
+		$info['repoInterface'] = 'I' . $info['model'] . 'Repository';
+		$info['repoClass']     = 'Database' . $info['model'] . 'Repository';
+
+		// View directory + route name prefix derived from the controller path.
+		$info['viewPath']  = strtolower( str_replace( '\\', '/', $info['controllerPath'] ) );
+		$info['routeName'] = str_replace( '/', '_', $info['viewPath'] );
+
+		// An explicit --from-table overrides the pluralized convention.
+		$fromTable = $this->input->getOption( 'from-table' );
+		if( !empty( $fromTable ) && is_string( $fromTable ) )
+		{
+			$info['tableName'] = $fromTable;
+		}
+
+		// Sensible defaults; refined once the field set is known.
+		$info['primaryKey']       = 'id';
+		$info['primaryKeyGetter'] = 'getId';
+
+		return $info;
+	}
+
+	/**
+	 * Refine info with details that depend on the resolved field set.
+	 */
+	private function applyFieldConventions( array $info, FieldSet $fields ): array
+	{
+		$primary = $fields->primary();
+
+		if( $primary )
+		{
+			$info['primaryKey']       = $primary->name;
+			$info['primaryKeyGetter'] = $primary->getter();
+		}
+
+		return $info;
+	}
+
+	/**
+	 * Resolve a FieldSet from --from-table introspection or --fields.
+	 *
+	 * @throws \Exception
+	 */
+	private function resolveFieldSet( array $info ): FieldSet
+	{
+		$fromTable = $this->input->getOption( 'from-table' );
+
+		if( !empty( $fromTable ) && is_string( $fromTable ) )
+		{
+			$pdo = Connection::fromConfig( $this->databaseConfig() );
+
+			return new SchemaIntrospector( $pdo )->introspect( $fromTable );
+		}
+
+		$fieldString = (string)$this->input->getOption( 'fields', '' );
+		$fields = FieldSet::fromDefinition( $fieldString );
+
+		return $this->decorateWithConventions( $fields );
+	}
+
+	/**
+	 * Prepend an auto-increment primary key and append timestamp columns to a
+	 * --fields derived set, mirroring the generated migration.
+	 */
+	private function decorateWithConventions( FieldSet $fields ): FieldSet
+	{
+		$all = $fields->all();
+
+		$names = array_map( fn( Field $f ) => $f->name, $all );
+
+		$prefix = [];
+		if( !$fields->primary() )
+		{
+			$prefix[] = new Field( name: 'id', type: 'integer', nullable: false, isPrimary: true, autoIncrement: true );
+		}
+
+		$suffix = [];
+		foreach( [ 'created_at', 'updated_at' ] as $ts )
+		{
+			if( !in_array( $ts, $names, true ) )
+			{
+				$suffix[] = new Field( name: $ts, type: 'datetime', nullable: true );
+			}
+		}
+
+		return new FieldSet( array_merge( $prefix, $all, $suffix ) );
+	}
+
+	/**
+	 * Read the database configuration section from the project settings.
+	 *
+	 * @throws \Exception
+	 */
+	private function databaseConfig(): array
+	{
+		$configPath = $this->findConfigPath();
+
+		if( !$configPath )
+		{
+			throw new \Exception( 'Config directory not found; cannot introspect database.' );
+		}
+
+		$source = $this->loadSettings( $configPath );
+
+		if( !$source )
+		{
+			throw new \Exception( 'Could not load settings (config/neuron.yaml).' );
+		}
+
+		$settings = new SettingManager( $source );
+		$config = $settings->getSection( 'database' );
+
+		if( !$config )
+		{
+			throw new \Exception( 'No "database" section found in settings.' );
+		}
+
+		return $config;
+	}
+
+	/**
+	 * Print the success summary, next steps and DI binding guidance.
+	 */
+	private function printSummary( array $info ): void
+	{
+		$this->output->newLine();
+		$this->output->success( 'Scaffold generated successfully!' );
+		$this->output->newLine();
+
+		foreach( $this->_Messages as $message )
+		{
+			$this->output->info( "  ✓ " . $message );
+		}
+
+		$this->output->newLine();
+		$this->output->info( 'Routing: controller actions are mapped via PHP route attributes (#[Get], #[Post], ...).' );
+		$this->output->info( '         No routes.yaml entry is required.' );
+
+		$this->output->newLine();
+		$this->output->info( 'Bind the repository in your service provider (or rely on the controller fallback):' );
+		$this->output->info( "  \$container->bind( \\{$info['repoNamespace']}\\{$info['repoInterface']}::class," );
+		$this->output->info( "                    \\{$info['repoNamespace']}\\{$info['repoClass']}::class );" );
+
+		$this->output->newLine();
+		$this->output->info( 'Next steps:' );
+		if( !$this->input->hasOption( 'from-table' ) && !$this->input->hasOption( 'no-migration' ) && $this->_HasMvcComponent )
+		{
+			$this->output->info( '  1. Run migration: ./vendor/bin/neuron db:migrate:run' );
+			$this->output->info( '  2. Start dev server: php -S localhost:8000 -t public' );
+			$this->output->info( "  3. Visit: http://localhost:8000{$info['routePrefix']}" );
+		}
+		else
+		{
+			$this->output->info( '  1. Start dev server: php -S localhost:8000 -t public' );
+			$this->output->info( "  2. Visit: http://localhost:8000{$info['routePrefix']}" );
+		}
+		$this->output->newLine();
+	}
+
+	/**
+	 * Parse resource name into naming components.
 	 */
 	private function parseResourceName( string $name ): array
 	{
-		// Remove "Controller" suffix if present
 		$name = preg_replace( '/Controller$/', '', $name );
 
-		// Split by / or \
 		$parts = preg_split( '#[/\\\\]+#', trim( $name, '/\\' ) );
 
 		$class = array_pop( $parts );
 		$subNamespace = implode( '\\', $parts );
 
-		// Generate various forms
 		$model = $class;
 		$models = $this->pluralize( $model );
 		$variable = lcfirst( $model );
 		$variables = lcfirst( $models );
 		$tableName = strtolower( $this->underscore( $models ) );
 
-		// Controller path for views (e.g., Admin/Posts)
 		$controllerPath = empty( $subNamespace ) ? $models : $subNamespace . '/' . $models;
-
-		// Route prefix (e.g., /admin/posts)
 		$routePrefix = '/' . strtolower( str_replace( '\\', '/', $controllerPath ) );
 
 		return [
-			'class' => $class . 'Controller',
-			'subNamespace' => $subNamespace,
-			'model' => $model,
-			'models' => $models,
-			'variable' => $variable,
-			'variables' => $variables,
-			'tableName' => $tableName,
+			'class'          => $class . 'Controller',
+			'subNamespace'   => $subNamespace,
+			'model'          => $model,
+			'models'         => $models,
+			'variable'       => $variable,
+			'variables'      => $variables,
+			'tableName'      => $tableName,
 			'controllerPath' => $controllerPath,
-			'routePrefix' => $routePrefix,
+			'routePrefix'    => $routePrefix,
 		];
 	}
 
@@ -207,48 +378,40 @@ class ScaffoldCommand extends Command
 		$fields = $this->input->getOption( 'fields', '' );
 		$migrationName = 'Create' . $info['models'] . 'Table';
 
-		// Find config directory
 		$configPath = $this->findConfigPath();
 		if( !$configPath )
 		{
 			$this->output->warning( 'Config directory not found - skipping migration' );
-			return true; // Non-fatal
+			return true;
 		}
 
-		// Load MigrationManager
 		try
 		{
 			$basePath = dirname( $configPath );
 			$settings = $this->loadSettings( $configPath );
 			$manager = new \Neuron\Mvc\Database\MigrationManager( $basePath, $settings );
 
-			// Ensure migrations directory exists
 			if( !$manager->ensureMigrationsDirectory() )
 			{
 				$this->output->error( 'Failed to create migrations directory' );
 				return false;
 			}
 
-			// Generate migration using custom template
 			$template = $this->generateMigrationTemplate( $info, $fields );
 			$templatePath = $this->_ProjectPath . '/.scaffold_migration_temp.php';
 
-			// Write temporary template
 			$this->fs->writeFile( $templatePath, $template );
 
-			// Execute Phinx create command with our template
 			list( $exitCode, $output ) = $manager->execute( 'create', [
 				'--environment' => $manager->getEnvironment(),
 				'--template' => $templatePath,
 				'name' => $migrationName
 			] );
 
-			// Clean up temporary template
 			@unlink( $templatePath );
 
 			if( $exitCode === 0 )
 			{
-				// Extract migration file path from Phinx output
 				$migrationPath = $manager->getMigrationsPath();
 				$this->_Messages[] = "Created migration: {$migrationPath}/{$migrationName}";
 			}
@@ -276,13 +439,11 @@ class ScaffoldCommand extends Command
 		$fields = $this->parseFields( $fieldsString );
 		$tableName = $info['tableName'];
 
-		// Build field definitions
 		$fieldDefinitions = [];
 		foreach( $fields as $field )
 		{
 			$line = "\t\t\$table->addColumn('{$field['name']}', '{$field['type']}'";
 
-			// Add options
 			if( !empty( $field['options'] ) )
 			{
 				$optionsStr = [];
@@ -359,7 +520,6 @@ PHP;
 				continue;
 			}
 
-			// Parse field:type format
 			if( !str_contains( $part, ':' ) )
 			{
 				continue;
@@ -369,7 +529,6 @@ PHP;
 			$name = trim( $name );
 			$type = trim( $type );
 
-			// Map type to Phinx type
 			$phinxType = $this->mapFieldType( $type );
 			$options = $this->getFieldOptions( $type, $name );
 
@@ -411,293 +570,22 @@ PHP;
 	{
 		$options = [];
 
-		// String fields get limit
 		if( in_array( strtolower( $type ), ['string', 'varchar'] ) )
 		{
 			$options['limit'] = 255;
 		}
 
-		// Boolean fields default to false
 		if( in_array( strtolower( $type ), ['boolean', 'bool'] ) )
 		{
 			$options['default'] = false;
 		}
 
-		// Text fields can be null by default
 		if( strtolower( $type ) === 'text' )
 		{
 			$options['null'] = true;
 		}
 
 		return $options;
-	}
-
-	/**
-	 * Generate controller file (reuses logic from ControllerCommand)
-	 */
-	private function generateController( array $info ): bool
-	{
-		// Determine full namespace
-		$namespace = $info['namespace'];
-		if( !empty( $info['subNamespace'] ) )
-		{
-			$namespace .= '\\' . $info['subNamespace'];
-		}
-
-		// Build controller path
-		$relativePath = str_replace( '\\', '/', $namespace );
-		$relativePath = preg_replace( '#^App/#', 'app/', $relativePath );
-		$controllerDir = $this->_ProjectPath . '/' . $relativePath;
-		$controllerFile = $controllerDir . '/' . $info['class'] . '.php';
-
-		// Check if exists
-		if( $this->fs->fileExists( $controllerFile ) && !$this->input->hasOption( 'force' ) )
-		{
-			$this->output->error( "Controller already exists: {$controllerFile}" );
-			$this->output->info( '   Use --force to overwrite' );
-			return false;
-		}
-
-		// Load stub
-		$stubFile = $info['isApi'] ? 'controller.api.stub' : 'controller.resource.stub';
-		if( !$this->templates->exists( $stubFile ) )
-		{
-			$this->output->error( "Could not load stub file: {$stubFile}" );
-			return false;
-		}
-
-		// Replace placeholders
-		$content = $this->templates->render( $stubFile, array_merge( $info, ['namespace' => $namespace] ) );
-
-		// Create directory
-		if( !$this->fs->isDir( $controllerDir ) )
-		{
-			if( !$this->fs->mkdir( $controllerDir, 0755, true ) )
-			{
-				$this->output->error( "Could not create directory: {$controllerDir}" );
-				return false;
-			}
-		}
-
-		// Write file
-		if( $this->fs->writeFile( $controllerFile, $content ) === false )
-		{
-			$this->output->error( 'Could not write controller file' );
-			return false;
-		}
-
-		$this->_Messages[] = "Created controller: {$controllerFile}";
-		return true;
-	}
-
-	/**
-	 * Generate view files
-	 */
-	private function generateViews( array $info ): bool
-	{
-		$viewsDir = $this->_ProjectPath . '/resources/views/' . strtolower( $info['models'] );
-
-		// Create views directory
-		if( !$this->fs->isDir( $viewsDir ) )
-		{
-			if( !$this->fs->mkdir( $viewsDir, 0755, true ) )
-			{
-				$this->output->error( "Could not create views directory: {$viewsDir}" );
-				return false;
-			}
-		}
-
-		// Generate each view
-		$views = ['index', 'create', 'edit'];
-		foreach( $views as $view )
-		{
-			$viewFile = $viewsDir . '/' . $view . '.php';
-
-			// Check if exists
-			if( $this->fs->fileExists( $viewFile ) && !$this->input->hasOption( 'force' ) )
-			{
-				$this->output->warning( "View already exists, skipping: {$viewFile}" );
-				continue;
-			}
-
-			// Load stub
-			$stubFile = 'view.' . $view . '.stub';
-			if( !$this->templates->exists( $stubFile ) )
-			{
-				$this->output->error( "Could not load view stub: {$stubFile}" );
-				return false;
-			}
-
-			// Replace placeholders
-			$content = $this->templates->render( $stubFile, $info );
-
-			// Write file
-			if( $this->fs->writeFile( $viewFile, $content ) === false )
-			{
-				$this->output->error( "Could not write view file: {$viewFile}" );
-				return false;
-			}
-
-			$this->_Messages[] = "Created view: {$viewFile}";
-		}
-
-		return true;
-	}
-
-	/**
-	 * Generate routes in routes.yaml
-	 */
-	private function generateRoutes( array $info ): bool
-	{
-		$configDir = $this->_ProjectPath . '/config';
-		$routesFile = $configDir . '/routes.yaml';
-
-		// Create config directory if it doesn't exist
-		if( !$this->fs->isDir( $configDir ) )
-		{
-			if( !$this->fs->mkdir( $configDir, 0755, true ) )
-			{
-				$this->output->error( "Could not create config directory: {$configDir}" );
-				return false;
-			}
-		}
-
-		// Initialize routes file if it doesn't exist
-		if( !$this->fs->fileExists( $routesFile ) )
-		{
-			$initialData = ['routes' => []];
-			$yaml = Yaml::dump( $initialData, 2, 2 );
-			if( $this->fs->writeFile( $routesFile, $yaml ) === false )
-			{
-				$this->output->error( "Could not create routes file: {$routesFile}" );
-				return false;
-			}
-		}
-
-		// Load existing routes
-		try
-		{
-			$routesContent = $this->fs->readFile( $routesFile );
-			if( $routesContent === false )
-			{
-				$this->output->error( "Could not read routes file: {$routesFile}" );
-				return false;
-			}
-			$data = Yaml::parse( $routesContent );
-		}
-		catch( \Exception $e )
-		{
-			$this->output->error( 'Could not parse routes.yaml: ' . $e->getMessage() );
-			return false;
-		}
-
-		// Build namespace
-		$namespace = $info['namespace'];
-		if( !empty( $info['subNamespace'] ) )
-		{
-			$namespace .= '\\' . $info['subNamespace'];
-		}
-		$controller = $namespace . '\\' . $info['class'];
-
-		// Generate route name prefix
-		$routeNamePrefix = strtolower( str_replace( '/', '_', $info['controllerPath'] ) );
-
-		// Build routes
-		$newRoutes = [
-			$routeNamePrefix . '_index' => [
-				'method' => 'GET',
-				'route' => $info['routePrefix'],
-				'controller' => $controller . '@index',
-			],
-			$routeNamePrefix . '_create' => [
-				'method' => 'GET',
-				'route' => $info['routePrefix'] . '/create',
-				'controller' => $controller . '@create',
-			],
-			$routeNamePrefix . '_store' => [
-				'method' => 'POST',
-				'route' => $info['routePrefix'],
-				'controller' => $controller . '@store',
-			],
-			$routeNamePrefix . '_edit' => [
-				'method' => 'GET',
-				'route' => $info['routePrefix'] . '/:id/edit',
-				'controller' => $controller . '@edit',
-			],
-			$routeNamePrefix . '_update' => [
-				'method' => 'PUT',
-				'route' => $info['routePrefix'] . '/:id',
-				'controller' => $controller . '@update',
-			],
-			$routeNamePrefix . '_destroy' => [
-				'method' => 'DELETE',
-				'route' => $info['routePrefix'] . '/:id',
-				'controller' => $controller . '@destroy',
-			],
-		];
-
-		// Add show route for API controllers
-		if( $info['isApi'] )
-		{
-			$showRoute = [
-				$routeNamePrefix . '_show' => [
-					'method' => 'GET',
-					'route' => $info['routePrefix'] . '/:id',
-					'controller' => $controller . '@show',
-				]
-			];
-
-			// Insert after index
-			$routesArray = [];
-			$inserted = false;
-			foreach( $newRoutes as $key => $route )
-			{
-				$routesArray[$key] = $route;
-				if( $key === $routeNamePrefix . '_index' && !$inserted )
-				{
-					$routesArray = array_merge( $routesArray, $showRoute );
-					$inserted = true;
-				}
-			}
-			$newRoutes = $routesArray;
-		}
-
-		// Add filter if specified
-		if( !empty( $info['filter'] ) )
-		{
-			foreach( $newRoutes as &$route )
-			{
-				$route['filter'] = $info['filter'];
-			}
-		}
-
-		// Add routes to existing data
-		if( !isset( $data['routes'] ) || !is_array( $data['routes'] ) )
-		{
-			$data['routes'] = [];
-		}
-
-		$data['routes'] = array_merge( $data['routes'], $newRoutes );
-
-		// Write back to file
-		try
-		{
-			$yaml = Yaml::dump( $data, 10, 2 );
-			if( $this->fs->writeFile( $routesFile, $yaml ) === false )
-			{
-				$this->output->error( 'Could not write routes file' );
-				return false;
-			}
-		}
-		catch( \Exception $e )
-		{
-			$this->output->error( 'Could not write routes.yaml: ' . $e->getMessage() );
-			return false;
-		}
-
-		$routeCount = count( $newRoutes );
-		$this->_Messages[] = "Added {$routeCount} routes to {$routesFile}";
-		return true;
 	}
 
 	/**

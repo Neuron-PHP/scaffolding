@@ -58,11 +58,9 @@ class EventCommandTest extends TestCase
 		$input->method( 'getOption' )->willReturn( null );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$method = $reflection->getMethod( 'parseProperties' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command );
 
@@ -84,11 +82,9 @@ class EventCommandTest extends TestCase
 		$input->method( 'getOption' )->willReturn( 'userId:int' );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$method = $reflection->getMethod( 'parseProperties' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command );
 
@@ -111,11 +107,9 @@ class EventCommandTest extends TestCase
 		$input->method( 'getOption' )->willReturn( ['userId:int', 'email:string'] );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$method = $reflection->getMethod( 'parseProperties' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command );
 
@@ -139,7 +133,6 @@ class EventCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateEvent' );
-		$method->setAccessible( true );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -147,11 +140,9 @@ class EventCommandTest extends TestCase
 		$input->method( 'hasOption' )->willReturn( false );
 
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$properties = [
@@ -188,7 +179,6 @@ class EventCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateEvent' );
-		$method->setAccessible( true );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -196,11 +186,9 @@ class EventCommandTest extends TestCase
 		$input->method( 'hasOption' )->willReturn( false );
 
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$result = $method->invoke( $command, 'TestEvent', 'App\\Events', [] );
@@ -231,15 +219,12 @@ class EventCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$method = $reflection->getMethod( 'generateEvent' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestEvent', 'App\\Events', [] );
 
@@ -264,11 +249,9 @@ class EventCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'generateEvent' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestEvent', 'App\\Events', [] );
 
@@ -289,11 +272,9 @@ class EventCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'generateEvent' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestEvent', 'App\\Events', [] );
 
@@ -318,11 +299,9 @@ class EventCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'generateEvent' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestEvent', 'App\\Events', [] );
 
@@ -346,15 +325,12 @@ class EventCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'parseProperties' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command );
 
@@ -378,11 +354,9 @@ class EventCommandTest extends TestCase
 		$input->method( 'getOption' )->willReturn( ' userId : int ' );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$method = $reflection->getMethod( 'parseProperties' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command );
 

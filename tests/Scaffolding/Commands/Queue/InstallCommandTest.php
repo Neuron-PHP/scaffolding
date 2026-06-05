@@ -50,7 +50,6 @@ class InstallCommandTest extends TestCase
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'camelToSnake' );
-		$method->setAccessible( true );
 
 		$this->assertEquals( 'create_queue_tables', $method->invoke( $command, 'CreateQueueTables' ) );
 		$this->assertEquals( 'my_class_name', $method->invoke( $command, 'MyClassName' ) );
@@ -66,7 +65,6 @@ class InstallCommandTest extends TestCase
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'getMigrationTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'CreateQueueTables' );
 
@@ -87,7 +85,6 @@ class InstallCommandTest extends TestCase
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'getMigrationTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'CreateQueueTables' );
 
@@ -115,7 +112,6 @@ class InstallCommandTest extends TestCase
 		// Use reflection to call private method
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'isAlreadyInstalled' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command );
 
@@ -131,12 +127,10 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateMigration' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command );
@@ -168,12 +162,10 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateMigration' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command );
@@ -193,7 +185,6 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'addQueueConfig' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command );
 
@@ -214,12 +205,10 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateMigration' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command );
@@ -241,7 +230,6 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'isAlreadyInstalled' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command );
 
@@ -257,7 +245,6 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'getMigrationTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestClassName' );
 
@@ -281,7 +268,6 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'getMigrationTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'CreateQueueTables' );
 
@@ -302,12 +288,10 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateMigration' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command );
@@ -335,7 +319,6 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'camelToSnake' );
-		$method->setAccessible( true );
 
 		// Test various cases
 		$this->assertEquals( 'a_b_c', $method->invoke( $command, 'ABC' ) );
@@ -366,12 +349,10 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateMigration' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command );
@@ -391,12 +372,10 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateMigration' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command );
@@ -419,7 +398,6 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'isAlreadyInstalled' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command );
 
@@ -444,7 +422,6 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'isAlreadyInstalled' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command );
 
@@ -460,7 +437,6 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'getMigrationTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'CreateQueueTables' );
 
@@ -488,12 +464,10 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateMigration' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command );
@@ -528,7 +502,6 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'camelToSnake' );
-		$method->setAccessible( true );
 
 		// The first letter should be lowercase, not have underscore before it
 		$result = $method->invoke( $command, 'CreateQueueTables' );
@@ -545,7 +518,6 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'getMigrationTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'CreateQueueTables' );
 
@@ -590,11 +562,9 @@ class InstallCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		// Mock the InputReader to avoid actual prompts
@@ -602,7 +572,6 @@ class InstallCommandTest extends TestCase
 		$inputReader->method( 'confirm' )->willReturn( false ); // Decline migration run
 
 		$inputReaderProperty = $reflection->getProperty( 'inputReader' );
-		$inputReaderProperty->setAccessible( true );
 		$inputReaderProperty->setValue( $command, $inputReader );
 
 		$exitCode = $command->execute();

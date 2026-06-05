@@ -58,12 +58,10 @@ class InitializerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateInitializer' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command, 'DatabaseInitializer', 'App\\Initializers' );
@@ -93,12 +91,10 @@ class InitializerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateInitializer' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command, 'TestInitializer', 'App\\Initializers' );
@@ -129,15 +125,12 @@ class InitializerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$method = $reflection->getMethod( 'generateInitializer' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestInitializer', 'App\\Initializers' );
 
@@ -158,11 +151,9 @@ class InitializerCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'generateInitializer' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestInitializer', 'App\\Initializers' );
 
@@ -189,15 +180,12 @@ class InitializerCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$method = $reflection->getMethod( 'generateInitializer' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestInitializer', 'App\\Initializers' );
 
@@ -222,11 +210,9 @@ class InitializerCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'generateInitializer' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestInitializer', 'App\\Initializers' );
 
