@@ -61,7 +61,6 @@ class EmailCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'createTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'welcome' );
 
@@ -91,7 +90,6 @@ class EmailCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'createTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'test-email' );
 
@@ -118,11 +116,9 @@ class EmailCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'createTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'welcome' );
 
@@ -143,11 +139,9 @@ class EmailCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'createTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'welcome' );
 
@@ -169,7 +163,6 @@ class EmailCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'createTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'password-reset' );
 
@@ -198,11 +191,9 @@ class EmailCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'createTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'welcome' );
 
@@ -226,11 +217,9 @@ class EmailCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'createTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'welcome' );
 
@@ -255,11 +244,9 @@ class EmailCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'createTemplate' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'welcome' );
 

@@ -54,12 +54,10 @@ class JobCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'validateCronExpression' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		// Valid cron expressions
@@ -79,12 +77,10 @@ class JobCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'validateCronExpression' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		// Invalid cron expression
@@ -105,7 +101,6 @@ class JobCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateJob' );
-		$method->setAccessible( true );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -113,11 +108,9 @@ class JobCommandTest extends TestCase
 		$input->method( 'hasOption' )->willReturn( false );
 
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$result = $method->invoke( $command, 'SendEmailReminders', 'App\\Jobs' );
@@ -148,7 +141,6 @@ class JobCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'generateJob' );
-		$method->setAccessible( true );
 
 		// Mock output and input
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -156,11 +148,9 @@ class JobCommandTest extends TestCase
 		$input->method( 'hasOption' )->willReturn( false );
 
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$result = $method->invoke( $command, 'TestJob', 'App\\Jobs' );
@@ -191,15 +181,12 @@ class JobCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$method = $reflection->getMethod( 'generateJob' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestJob', 'App\\Jobs' );
 
@@ -220,11 +207,9 @@ class JobCommandTest extends TestCase
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$reflection = new \ReflectionClass( $command );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$method = $reflection->getMethod( 'generateJob' );
-		$method->setAccessible( true );
 
 		$result = $method->invoke( $command, 'TestJob', 'App\\Jobs' );
 
@@ -244,12 +229,10 @@ class JobCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'addToSchedule' );
-		$method->setAccessible( true );
 
 		// Mock output
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$result = $method->invoke( $command, 'SendEmailReminders', 'App\\Jobs', '0 9 * * *' );
@@ -282,7 +265,6 @@ class JobCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'addToSchedule' );
-		$method->setAccessible( true );
 
 		// Mock output and input (without force)
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -290,11 +272,9 @@ class JobCommandTest extends TestCase
 		$input->method( 'hasOption' )->willReturn( false );
 
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$result = $method->invoke( $command, 'SendEmailReminders', 'App\\Jobs', '0 10 * * *' );
@@ -317,7 +297,6 @@ class JobCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'addToSchedule' );
-		$method->setAccessible( true );
 
 		// Mock output and input (with force)
 		$output = $this->createMock( \Neuron\Cli\Console\Output::class );
@@ -325,11 +304,9 @@ class JobCommandTest extends TestCase
 		$input->method( 'hasOption' )->willReturn( true );
 
 		$outputProperty = $reflection->getProperty( 'output' );
-		$outputProperty->setAccessible( true );
 		$outputProperty->setValue( $command, $output );
 
 		$inputProperty = $reflection->getProperty( 'input' );
-		$inputProperty->setAccessible( true );
 		$inputProperty->setValue( $command, $input );
 
 		$result = $method->invoke( $command, 'SendEmailReminders', 'App\\Jobs', '0 10 * * *' );
@@ -350,7 +327,6 @@ class JobCommandTest extends TestCase
 
 		$reflection = new \ReflectionClass( $command );
 		$method = $reflection->getMethod( 'toSnakeCase' );
-		$method->setAccessible( true );
 
 		$this->assertEquals( 'send_email_reminders', $method->invoke( $command, 'SendEmailReminders' ) );
 		$this->assertEquals( 'process_orders', $method->invoke( $command, 'ProcessOrders' ) );
