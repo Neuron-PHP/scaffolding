@@ -141,4 +141,48 @@ class FromTableEndToEndTest extends TestCase
 			$this->assertSame( 0, $status, "Syntax error in $path:\n" . implode( "\n", $output ) );
 		}
 	}
+
+	/**
+	 * Mirrors the command's --only behavior: the model maps the whole table
+	 * while the DTO and views expose only the curated subset.
+	 */
+	public function testFilteredSurfaceKeepsFullModelButNarrowDtoAndViews(): void
+	{
+		$pdo    = new PDO( 'sqlite:' . $this->dbPath );
+		$fields = new SchemaIntrospector( $pdo )->introspect( 'jud_docket' );
+
+		$editable = $fields->only( [ 'case_number' ] );
+
+		$fs = new MemoryFileSystem();
+		$fs->setCwd( '/app' );
+
+		$stubPath  = __DIR__ . '/../../../src/Scaffolding/Stubs';
+		$templates = new FileTemplateEngine( new RealFileSystem(), $stubPath );
+		$scaffolder = new ResourceScaffolder( $fs, $templates, '/app' );
+
+		$info = $this->info();
+		$scaffolder->generateModel( $info, $fields );          // full table
+		$scaffolder->generateDto( $info, $editable );          // subset
+		$scaffolder->generateViews( $info, $editable );        // subset
+
+		$files = $fs->getFiles();
+
+		$model = $files['/app/app/Models/Docket.php'];
+		$this->assertStringContainsString( '$_caseNumber', $model );
+		$this->assertStringContainsString( '$_description', $model );
+		$this->assertStringContainsString( '$_amount', $model );
+		$this->assertStringContainsString( '$_isClosed', $model );
+
+		$dto = $files['/app/resources/dtos/jud_docket.yaml'];
+		$this->assertStringContainsString( 'case_number:', $dto );
+		$this->assertStringNotContainsString( 'description:', $dto );
+		$this->assertStringNotContainsString( 'amount:', $dto );
+		$this->assertStringNotContainsString( 'is_closed:', $dto );
+
+		$form = $files['/app/resources/views/dockets/_form.php'];
+		$this->assertStringContainsString( 'name="case_number"', $form );
+		$this->assertStringNotContainsString( 'name="description"', $form );
+		$this->assertStringNotContainsString( 'name="amount"', $form );
+		$this->assertStringNotContainsString( 'name="is_closed"', $form );
+	}
 }

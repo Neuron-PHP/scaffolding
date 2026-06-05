@@ -57,4 +57,43 @@ class FieldSetTest extends TestCase
 		$listable = array_map( fn( Field $f ) => $f->name, $set->listable() );
 		$this->assertEquals( [ 'title' ], $listable );
 	}
+
+	private function wideSet(): FieldSet
+	{
+		return new FieldSet( [
+			new Field( 'id', 'integer', isPrimary: true, autoIncrement: true ),
+			new Field( 'case_number', 'string', length: 50 ),
+			new Field( 'description', 'text', nullable: true ),
+			new Field( 'amount', 'decimal', nullable: true ),
+			new Field( 'is_closed', 'boolean' ),
+		] );
+	}
+
+	public function testNamesReturnsDeclarationOrder(): void
+	{
+		$this->assertEquals(
+			[ 'id', 'case_number', 'description', 'amount', 'is_closed' ],
+			$this->wideSet()->names()
+		);
+	}
+
+	public function testOnlyKeepsNamedFieldsAndAlwaysPrimary(): void
+	{
+		$set = $this->wideSet()->only( [ 'case_number', 'is_closed' ] );
+
+		// Primary key is retained even though it was not listed.
+		$this->assertEquals( [ 'id', 'case_number', 'is_closed' ], $set->names() );
+
+		// The editable surface reflects exactly the requested columns.
+		$editable = array_map( fn( Field $f ) => $f->name, $set->editable() );
+		$this->assertEquals( [ 'case_number', 'is_closed' ], $editable );
+	}
+
+	public function testExceptRemovesNamedFieldsButNeverPrimary(): void
+	{
+		$set = $this->wideSet()->except( [ 'description', 'amount', 'id' ] );
+
+		// 'id' was named but the primary key is never dropped.
+		$this->assertEquals( [ 'id', 'case_number', 'is_closed' ], $set->names() );
+	}
 }
