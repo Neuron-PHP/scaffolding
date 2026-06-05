@@ -1,4 +1,4 @@
-## 0.8.10
+## 0.8.10 2026-06-05
 
 ## 0.8.9 2026-06-05
 * Massive upgrade. Supports Dtos, Repositories, and Services. Added 94 new tests with MemoryFileSystem for 62.74% coverage. Refactored all scaffolding commands to use IFileSystem abstraction for testability and maintainability.
