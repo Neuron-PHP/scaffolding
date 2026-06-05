@@ -71,6 +71,9 @@ class ScaffoldCommand extends Command
 		$this->addArgument( 'name', true, 'Resource name (e.g., Post or Admin/Post)' );
 		$this->addOption( 'fields', 'f', true, 'Field definitions (e.g., "title:string,body:text,published:boolean")' );
 		$this->addOption( 'from-table', null, true, 'Introspect an existing table for fields (e.g., jud_docket)' );
+		$this->addOption( 'only', null, true, 'Comma-separated columns to expose in the DTO and views (model/repository keep every column)' );
+		$this->addOption( 'except', null, true, 'Comma-separated columns to exclude from the DTO and views (model/repository keep every column)' );
+		$this->addOption( 'list-fields', null, false, 'Print the resolved columns and exit without generating anything' );
 		$this->addOption( 'namespace', null, true, 'Controller namespace', 'App\\Controllers' );
 		$this->addOption( 'model-namespace', null, true, 'Model namespace', 'App\\Models' );
 		$this->addOption( 'repo-namespace', null, true, 'Repository namespace', 'App\\Repositories' );
@@ -111,6 +114,32 @@ class ScaffoldCommand extends Command
 
 		$info = $this->applyFieldConventions( $info, $fields );
 
+		// --list-fields: show what was resolved and stop (no files written).
+		if( $this->input->hasOption( 'list-fields' ) )
+		{
+			$this->printFieldList( $info, $fields );
+			return 0;
+		}
+
+		// The model, repository and migration always map the full table so
+		// persistence stays correct; --only/--except only narrow the editable
+		// surface (DTO + views).
+		try
+		{
+			$editableFields = $this->applyFieldFilters( $fields );
+		}
+		catch( \InvalidArgumentException $e )
+		{
+			$this->output->error( $e->getMessage() );
+			return 1;
+		}
+
+		if( count( $editableFields->all() ) !== count( $fields->all() ) )
+		{
+			$exposed = implode( ', ', array_map( fn( Field $f ) => $f->name, $editableFields->editable() ) );
+			$this->output->info( "Model & repository map all {$info['tableName']} columns; DTO/views expose: {$exposed}" );
+		}
+
 		$fromTable = $this->input->hasOption( 'from-table' );
 
 		try
@@ -137,7 +166,7 @@ class ScaffoldCommand extends Command
 			}
 
 			$this->_Messages[] = 'Created model: ' . $this->scaffolder->generateModel( $info, $fields, $force );
-			$this->_Messages[] = 'Created DTO: ' . $this->scaffolder->generateDto( $info, $fields, $force );
+			$this->_Messages[] = 'Created DTO: ' . $this->scaffolder->generateDto( $info, $editableFields, $force );
 
 			foreach( $this->scaffolder->generateRepository( $info, $force ) as $file )
 			{
@@ -148,7 +177,7 @@ class ScaffoldCommand extends Command
 
 			if( !$info['isApi'] )
 			{
-				foreach( $this->scaffolder->generateViews( $info, $fields, $force ) as $file )
+				foreach( $this->scaffolder->generateViews( $info, $editableFields, $force ) as $file )
 				{
 					$this->_Messages[] = 'Created view: ' . $file;
 				}
@@ -235,6 +264,87 @@ class ScaffoldCommand extends Command
 		$fields = FieldSet::fromDefinition( $fieldString );
 
 		return $this->decorateWithConventions( $fields );
+	}
+
+	/**
+	 * Narrow the editable surface (DTO + views) using --only / --except.
+	 *
+	 * The model, repository and migration are unaffected: they always map the
+	 * complete table so inserts/updates remain valid. Returns the full set
+	 * unchanged when neither option is supplied.
+	 *
+	 * @throws \InvalidArgumentException when both options are given, or a named
+	 *                                   column does not exist.
+	 */
+	private function applyFieldFilters( FieldSet $fields ): FieldSet
+	{
+		$only   = trim( (string)$this->input->getOption( 'only', '' ) );
+		$except = trim( (string)$this->input->getOption( 'except', '' ) );
+
+		if( $only !== '' && $except !== '' )
+		{
+			throw new \InvalidArgumentException( 'Use either --only or --except, not both.' );
+		}
+
+		if( $only === '' && $except === '' )
+		{
+			return $fields;
+		}
+
+		$raw = $only !== '' ? $only : $except;
+
+		$names = array_values( array_filter(
+			array_map( 'trim', explode( ',', $raw ) ),
+			fn( string $n ) => $n !== ''
+		) );
+
+		$known   = $fields->names();
+		$unknown = array_diff( $names, $known );
+
+		if( $unknown )
+		{
+			throw new \InvalidArgumentException(
+				'Unknown column(s): ' . implode( ', ', $unknown ) .
+				'. Available: ' . implode( ', ', $known )
+			);
+		}
+
+		return $only !== '' ? $fields->only( $names ) : $fields->except( $names );
+	}
+
+	/**
+	 * Print the resolved columns (used by --list-fields) so the caller can
+	 * decide what to pass to --only / --except before generating.
+	 */
+	private function printFieldList( array $info, FieldSet $fields ): void
+	{
+		$this->output->info( "Columns for '{$info['tableName']}':\n" );
+
+		foreach( $fields->all() as $field )
+		{
+			$flags = [];
+			if( $field->isPrimary )
+			{
+				$flags[] = 'primary';
+			}
+			if( $field->nullable )
+			{
+				$flags[] = 'nullable';
+			}
+			if( $field->isTimestamp() )
+			{
+				$flags[] = 'timestamp';
+			}
+
+			$suffix = $flags ? '  (' . implode( ', ', $flags ) . ')' : '';
+
+			$this->output->info( sprintf( '  %-30s %s%s', $field->name, $field->type, $suffix ) );
+		}
+
+		$editable = array_map( fn( Field $f ) => $f->name, $fields->editable() );
+
+		$this->output->info( "\nEditable by default: " . implode( ', ', $editable ) );
+		$this->output->info( 'Narrow with --only="col1,col2" or --except="col3,col4".' );
 	}
 
 	/**

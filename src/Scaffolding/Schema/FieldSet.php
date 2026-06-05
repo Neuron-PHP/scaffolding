@@ -98,6 +98,53 @@ class FieldSet
 	}
 
 	/**
+	 * Field names, in declaration order.
+	 *
+	 * @return string[]
+	 */
+	public function names(): array
+	{
+		return array_map( fn( Field $f ) => $f->name, $this->fields );
+	}
+
+	/**
+	 * Restrict the set to the named fields, preserving the primary key so the
+	 * generated show view and key-based links stay coherent.
+	 *
+	 * @param string[] $names
+	 * @return self
+	 */
+	public function only( array $names ): self
+	{
+		$names = array_map( 'trim', $names );
+
+		$kept = array_filter(
+			$this->fields,
+			fn( Field $f ) => in_array( $f->name, $names, true ) || $f->isPrimary
+		);
+
+		return new self( array_values( $kept ) );
+	}
+
+	/**
+	 * Remove the named fields, but never drop the primary key.
+	 *
+	 * @param string[] $names
+	 * @return self
+	 */
+	public function except( array $names ): self
+	{
+		$names = array_map( 'trim', $names );
+
+		$kept = array_filter(
+			$this->fields,
+			fn( Field $f ) => $f->isPrimary || !in_array( $f->name, $names, true )
+		);
+
+		return new self( array_values( $kept ) );
+	}
+
+	/**
 	 * @return bool Whether the set contains any fields.
 	 */
 	public function isEmpty(): bool

@@ -32,6 +32,30 @@ The `--from-table` path introspects the live schema via PDO
 SQLite) using the project's configured connection, so it is the primary path
 for mapping existing GroupOffice tables.
 
+#### Wide tables: exposing a subset
+
+Large legacy tables (e.g. `jud_docket`) often have many columns you don't want
+in the editing UI. Inspect the columns first, then narrow the **editable
+surface** with `--only` or `--except`:
+
+```bash
+# 1. See what's there (prints columns + types, generates nothing)
+php neuron scaffold:generate Docket --from-table=jud_docket --list-fields
+
+# 2. Expose just the columns you need
+php neuron scaffold:generate Docket --from-table=jud_docket \
+  --only="case_number,status,filed_date,judge_id"
+
+# ...or keep everything except a few
+php neuron scaffold:generate Docket --from-table=jud_docket \
+  --except="created_by,modified_by,acl_id"
+```
+
+`--only` / `--except` affect **only the DTO and views** — the model,
+repository, and migration always map the complete table, so inserts and
+updates that touch `NOT NULL` columns keep working. The primary key is always
+retained. (`--only` and `--except` are mutually exclusive.)
+
 Generated controllers use PHP 8 route attributes (`#[Get]` / `#[Post]` …) — no
 `routes.yaml` is written. Unsafe-method routes are tagged with
 `filters: ['csrf']`, and forms emit `csrf_field()`; both are provided by the
