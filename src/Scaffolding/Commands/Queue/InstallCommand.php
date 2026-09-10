@@ -263,7 +263,7 @@ class $className extends AbstractMigration
 		// Jobs table
 		\$jobs = \$this->table( 'jobs', [ 'id' => false, 'primary_key' => [ 'id' ] ] );
 
-		\$jobs->addColumn( 'id', 'string', [ 'limit' => 255 ] )
+		\$jobs->addColumn( 'id', 'string', [ 'limit' => 255, 'null' => false ] )
 			->addColumn( 'queue', 'string', [ 'limit' => 255 ] )
 			->addColumn( 'payload', 'text' )
 			->addColumn( 'attempts', 'integer', [ 'default' => 0 ] )
@@ -278,7 +278,7 @@ class $className extends AbstractMigration
 		// Failed jobs table
 		\$failedJobs = \$this->table( 'failed_jobs', [ 'id' => false, 'primary_key' => [ 'id' ] ] );
 
-		\$failedJobs->addColumn( 'id', 'string', [ 'limit' => 255 ] )
+		\$failedJobs->addColumn( 'id', 'string', [ 'limit' => 255, 'null' => false ] )
 			->addColumn( 'queue', 'string', [ 'limit' => 255 ] )
 			->addColumn( 'payload', 'text' )
 			->addColumn( 'exception', 'text' )

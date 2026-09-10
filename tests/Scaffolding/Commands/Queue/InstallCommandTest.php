@@ -454,6 +454,9 @@ class InstallCommandTest extends TestCase
 
 		// Verify nullable columns
 		$this->assertStringContainsString( "'null' => true", $result );
+
+		// MySQL requires PRIMARY KEY columns to be NOT NULL
+		$this->assertStringContainsString( "addColumn( 'id', 'string', [ 'limit' => 255, 'null' => false ] )", $result );
 	}
 
 	public function testGenerateMigrationCreatesValidPhpFile(): void
