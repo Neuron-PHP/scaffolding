@@ -26,7 +26,7 @@ class ScaffoldCommand extends Command
 {
 	private string $_ProjectPath;
 	private array $_Messages = [];
-	private bool $_HasMvcComponent = false;
+	private bool $_HasOrmComponent = false;
 	private IFileSystem $fs;
 	private ITemplateEngine $templates;
 	private ResourceScaffolder $scaffolder;
@@ -44,7 +44,8 @@ class ScaffoldCommand extends Command
 
 		$this->scaffolder = new ResourceScaffolder( $this->fs, $this->templates, $this->_ProjectPath );
 
-		$this->_HasMvcComponent = class_exists( '\\Neuron\\Mvc\\Database\\MigrationManager' );
+		$this->_HasOrmComponent = class_exists( '\\Neuron\\Orm\\Database\\MigrationManager' )
+			|| class_exists( '\\Neuron\\Mvc\\Database\\MigrationManager' );
 	}
 
 	/**
@@ -147,7 +148,7 @@ class ScaffoldCommand extends Command
 			// Migration is only meaningful for new tables.
 			if( !$fromTable && !$this->input->hasOption( 'no-migration' ) )
 			{
-				if( $this->_HasMvcComponent )
+				if( $this->_HasOrmComponent )
 				{
 					if( !$this->generateMigration( $info ) )
 					{
@@ -156,8 +157,8 @@ class ScaffoldCommand extends Command
 				}
 				else
 				{
-					$this->output->warning( 'MVC component not installed - skipping migration generation' );
-					$this->output->info( '   Install via: composer require neuron-php/mvc' );
+					$this->output->warning( 'ORM component not installed - skipping migration generation' );
+					$this->output->info( '   Install via: composer require neuron-php/orm' );
 				}
 			}
 			elseif( $fromTable )
@@ -432,7 +433,7 @@ class ScaffoldCommand extends Command
 
 		$this->output->newLine();
 		$this->output->info( 'Next steps:' );
-		if( !$this->input->hasOption( 'from-table' ) && !$this->input->hasOption( 'no-migration' ) && $this->_HasMvcComponent )
+		if( !$this->input->hasOption( 'from-table' ) && !$this->input->hasOption( 'no-migration' ) && $this->_HasOrmComponent )
 		{
 			$this->output->info( '  1. Run migration: ./vendor/bin/neuron db:migrate:run' );
 			$this->output->info( '  2. Start dev server: php -S localhost:8000 -t public' );
@@ -499,7 +500,10 @@ class ScaffoldCommand extends Command
 		{
 			$basePath = dirname( $configPath );
 			$settings = $this->loadSettings( $configPath );
-			$manager = new \Neuron\Mvc\Database\MigrationManager( $basePath, $settings );
+			$managerClass = class_exists( '\\Neuron\\Orm\\Database\\MigrationManager' )
+				? '\\Neuron\\Orm\\Database\\MigrationManager'
+				: '\\Neuron\\Mvc\\Database\\MigrationManager';
+			$manager = new $managerClass( $basePath, $settings );
 
 			if( !$manager->ensureMigrationsDirectory() )
 			{

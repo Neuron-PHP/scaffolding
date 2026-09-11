@@ -30,7 +30,7 @@
     }
   },
   "suggest": {
-    "neuron-php/mvc": "Required for migration generation in scaffold:generate command"
+    "neuron-php/orm": "Required for migration generation in scaffold:generate command"
   },
   "extra": {
     "neuron": {
