@@ -87,5 +87,6 @@ class ControllerCommandTest extends TestCase
 		$this->assertEquals( 'Posts', $method->invoke( $command, 'Post' ) );
 		$this->assertEquals( 'Categories', $method->invoke( $command, 'Category' ) );
 		$this->assertEquals( 'Classes', $method->invoke( $command, 'Class' ) );
+		$this->assertEquals( 'Keys', $method->invoke( $command, 'Key' ) );
 	}
 }

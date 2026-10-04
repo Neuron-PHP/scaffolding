@@ -89,6 +89,35 @@ class ScaffoldCommandTest extends TestCase
 		$this->assertEmpty( $result );
 	}
 
+	/**
+	 * The generated migration template must use the "$className" placeholder
+	 * that Phinx / Neuron's MigrationManager substitutes when creating the
+	 * file. A literal "$CLASSNAME" (or any un-substituted token) would leave
+	 * invalid PHP in the migration ("class $CLASSNAME extends ...").
+	 */
+	public function testGenerateMigrationTemplateUsesPhinxClassNamePlaceholder(): void
+	{
+		$command = new ScaffoldCommand();
+
+		$reflection = new \ReflectionClass( $command );
+		$method = $reflection->getMethod( 'generateMigrationTemplate' );
+
+		$info = [ 'tableName' => 'organizations' ];
+		$template = $method->invoke( $command, $info, 'name:string,slug:string' );
+
+		$this->assertStringContainsString(
+			'class $className extends AbstractMigration',
+			$template,
+			'Migration template must use the $className placeholder substituted by MigrationManager.'
+		);
+		$this->assertStringNotContainsString(
+			'$CLASSNAME',
+			$template,
+			'Migration template must not contain the un-substituted $CLASSNAME token.'
+		);
+		$this->assertStringContainsString( "\$this->table('organizations')", $template );
+	}
+
 	public function testParseFieldsSimpleTypes(): void
 	{
 		$command = new ScaffoldCommand();
@@ -132,6 +161,7 @@ class ScaffoldCommandTest extends TestCase
 		$this->assertEquals( 'Posts', $method->invoke( $command, 'Post' ) );
 		$this->assertEquals( 'Categories', $method->invoke( $command, 'Category' ) );
 		$this->assertEquals( 'Boxes', $method->invoke( $command, 'Box' ) );
+		$this->assertEquals( 'Keys', $method->invoke( $command, 'Key' ) );
 	}
 
 	public function testUnderscoreConversion(): void
