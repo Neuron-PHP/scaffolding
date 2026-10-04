@@ -287,7 +287,7 @@ class ControllerCommand extends Command
 		{
 			return $word . 'es';
 		}
-		elseif( preg_match( '/y$/i', $word ) )
+		elseif( preg_match( '/[^aeiou]y$/i', $word ) )
 		{
 			return preg_replace( '/y$/i', 'ies', $word );
 		}
