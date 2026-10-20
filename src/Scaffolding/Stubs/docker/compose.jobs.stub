@@ -1,0 +1,23 @@
+
+  # The php:*-apache base image declares STOPSIGNAL SIGWINCH (Apache's graceful
+  # stop). CLI roles must override it or `docker stop` never reaches PHP and
+  # the process is killed when the grace period ends.
+
+  # One scheduler. To run more, set `queue.schedule_lock: database` first.
+  scheduler:
+    <<: *app
+    user: www-data
+    command: ["php", "vendor/bin/neuron", "jobs:schedule"]
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+
+  # Scale with `--scale worker=N`. stop_grace_period must cover the worker's
+  # --timeout so a running job can finish on `docker stop`.
+  worker:
+    <<: *app
+    user: www-data
+    command: ["php", "vendor/bin/neuron", "jobs:work", "--queue={{queues}}", "--timeout=60", "--memory=128", "--max-time=3600"]
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    stop_grace_period: 90s

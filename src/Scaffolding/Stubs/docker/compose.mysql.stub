@@ -1,0 +1,18 @@
+
+  # The PHP services reach this through DATABASE_URL (see x-app above).
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-neuron}
+      MYSQL_USER: ${DB_USER:-neuron}
+      MYSQL_PASSWORD: ${DB_PASS:-neuron}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:-root}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASS:-root}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30

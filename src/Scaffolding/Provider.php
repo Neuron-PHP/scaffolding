@@ -59,6 +59,12 @@ class Provider
 			'Neuron\\Scaffolding\\Commands\\Queue\\InstallCommand'
 		);
 
+		// Docker files
+		$registry->register(
+			'docker:install',
+			'Neuron\\Scaffolding\\Commands\\Docker\\InstallCommand'
+		);
+
 		// Full CRUD scaffold generator
 		$registry->register(
 			'scaffold:generate',
