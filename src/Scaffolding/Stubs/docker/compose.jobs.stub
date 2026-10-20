@@ -1,7 +1,8 @@
 
   # The php:*-apache base image declares STOPSIGNAL SIGWINCH (Apache's graceful
-  # stop). CLI roles must override it or `docker stop` never reaches PHP and
-  # the process is killed when the grace period ends.
+  # stop). neuron-php/jobs >= 0.2.18 treats SIGWINCH as a stop request when
+  # headless; stop_signal: SIGTERM below keeps older versions safe and makes
+  # the intent explicit.
 
   # One scheduler. To run more, set `queue.schedule_lock: database` first.
   scheduler:
