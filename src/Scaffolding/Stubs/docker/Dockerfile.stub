@@ -11,9 +11,9 @@
 #   prod  vendor/ baked in, opcache without timestamp checks, errors to the log
 #
 # The entrypoint `exec`s the command so PHP is PID 1 and receives signals.
-# The base image's STOPSIGNAL is SIGWINCH (Apache graceful stop); run the
-# scheduler and worker with `--stop-signal SIGTERM` (compose: stop_signal) so
-# `docker stop` lets jobs:work finish the job in hand and exit cleanly.
+# The base image's STOPSIGNAL is SIGWINCH (Apache graceful stop). jobs:work
+# and jobs:schedule (neuron-php/jobs >= 0.2.18) stop cleanly on it when run
+# headless; on older versions give CLI containers `--stop-signal SIGTERM`.
 
 ARG PHP_VERSION={{php_version}}
 

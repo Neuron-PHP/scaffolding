@@ -469,7 +469,7 @@ class InstallCommand extends Command
 		{
 			$this->output->info( "    scheduler  php vendor/bin/neuron jobs:schedule" );
 			$this->output->info( "    worker     php vendor/bin/neuron jobs:work --queue={$options['queues']} --memory=128 --max-time=3600" );
-			$this->output->info( "  Give the scheduler and worker containers --stop-signal SIGTERM (the base image stops Apache with SIGWINCH)." );
+			$this->output->info( "  The base image stops with SIGWINCH; jobs >= 0.2.18 handles it, older versions need --stop-signal SIGTERM." );
 		}
 
 		if( $options['railway'] )

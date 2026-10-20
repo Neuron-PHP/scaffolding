@@ -120,9 +120,9 @@ Things the generated files take care of that are easy to miss by hand:
 
 - `pcntl` is installed; without it job timeouts and graceful shutdown are off.
 - The entrypoint `exec`s the command so PHP is PID 1 and receives signals.
-- `php:*-apache` declares `STOPSIGNAL SIGWINCH`; the scheduler and worker
-  services set `stop_signal: SIGTERM` so `docker stop` lets a running job
-  finish. Do the same (`--stop-signal SIGTERM`) wherever else you run them.
+- `php:*-apache` declares `STOPSIGNAL SIGWINCH`. `neuron-php/jobs` 0.2.18+
+  stops cleanly on it when headless; the scheduler and worker services also
+  set `stop_signal: SIGTERM` for older versions and to make the intent plain.
 - `stop_grace_period` on the worker exceeds `--timeout`.
 - `memory_limit` (256M) stays above `jobs:work --memory=128` so the worker
   recycles itself before PHP aborts.
