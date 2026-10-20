@@ -1,5 +1,20 @@
 ## 0.8.14.1
 
+* Added `docker:install`. Writes a multi-stage `Dockerfile` (PHP 8.5 by
+  default; `dev` target with Xdebug off until `XDEBUG_MODE=debug`, `prod`
+  target with `vendor/` baked in), `.dockerignore`, `docker-compose.yml` and
+  `.docker/` (`php.ini`, `vhost.conf`, `entrypoint.sh`), optionally
+  `railway.json`. One image serves the web, scheduler and queue-worker roles;
+  compose runs all three plus `db` (`--db=mysql|pgsql`) and `redis`
+  (`--redis`) with health checks, and wires the database through
+  `DATABASE_URL`. Defaults come from `config/neuron.yaml` and the project
+  layout. The generated files install `pcntl`, make PHP PID 1 and set
+  `stop_signal: SIGTERM` on the CLI services (the `php:*-apache` base image
+  stops with `SIGWINCH`, which PHP ignores).
+* `Schema\Connection` delegates to `Neuron\Data\Database\ConnectionFactory`,
+  so `--from-table` introspection accepts `database.url` and `DATABASE_URL`.
+* `queue:install` points at `readme.md` instead of the removed `QUEUE.md`.
+
 ## 0.8.13 2026-10-04
 
 ## 0.8.12 2026-09-11

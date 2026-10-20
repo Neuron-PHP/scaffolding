@@ -96,6 +96,41 @@ php neuron db:migration:generate CreateUsersTable
 php neuron mail:generate welcome
 ```
 
+### Docker Files
+```bash
+php neuron docker:install                      # defaults read from config/neuron.yaml
+php neuron docker:install --db=mysql --redis   # add database and Redis services
+php neuron docker:install --php=8.4 --docroot=public --queue=high,default
+php neuron docker:install --web-only           # no scheduler / worker services
+php neuron docker:install --railway            # also write railway.json
+```
+
+Writes `Dockerfile`, `.dockerignore`, `docker-compose.yml` and `.docker/`
+(`php.ini`, `vhost.conf`, `entrypoint.sh`). Existing files are skipped unless
+`--force`.
+
+One image serves every role; only the command differs. The `dev` target has
+Xdebug (off until `XDEBUG_MODE=debug`) and expects the source bind-mounted;
+the `prod` target bakes `vendor/` in with `composer install --no-dev`.
+`docker-compose.yml` runs `app` (Apache), `scheduler` (`jobs:schedule`) and
+`worker` (`jobs:work`, scale with `--scale worker=N`), plus `db` and `redis`
+when requested.
+
+Things the generated files take care of that are easy to miss by hand:
+
+- `pcntl` is installed; without it job timeouts and graceful shutdown are off.
+- The entrypoint `exec`s the command so PHP is PID 1 and receives signals.
+- `php:*-apache` declares `STOPSIGNAL SIGWINCH`; the scheduler and worker
+  services set `stop_signal: SIGTERM` so `docker stop` lets a running job
+  finish. Do the same (`--stop-signal SIGTERM`) wherever else you run them.
+- `stop_grace_period` on the worker exceeds `--timeout`.
+- `memory_limit` (256M) stays above `jobs:work --memory=128` so the worker
+  recycles itself before PHP aborts.
+- CLI roles run as `www-data`, the same user as Apache, so `storage/` stays
+  writable by all three.
+- Database and Redis services carry health checks and the PHP services
+  `depends_on` them with `condition: service_healthy`.
+
 ## Learn More
 
 Visit [neuronphp.com](http://neuronphp.com) for full documentation.

@@ -12,7 +12,7 @@ class ProviderTest extends TestCase
 	{
 		$registry = $this->createMock( Registry::class );
 
-		$registry->expects( $this->exactly( 8 ) )
+		$registry->expects( $this->exactly( 9 ) )
 			->method( 'register' )
 			->withConsecutive(
 				['controller:generate', 'Neuron\\Scaffolding\\Commands\\ControllerCommand'],
@@ -22,6 +22,7 @@ class ProviderTest extends TestCase
 				['initializer:generate', 'Neuron\\Scaffolding\\Commands\\InitializerCommand'],
 				['mail:generate', 'Neuron\\Scaffolding\\Commands\\EmailCommand'],
 				['queue:install', 'Neuron\\Scaffolding\\Commands\\Queue\\InstallCommand'],
+				['docker:install', 'Neuron\\Scaffolding\\Commands\\Docker\\InstallCommand'],
 				['scaffold:generate', 'Neuron\\Scaffolding\\Commands\\ScaffoldCommand']
 			);
 
@@ -58,12 +59,12 @@ class ProviderTest extends TestCase
 		$this->assertEquals( 'void', $returnType->getName() );
 	}
 
-	public function testProviderRegistersAllEightCommands(): void
+	public function testProviderRegistersAllNineCommands(): void
 	{
 		$registry = $this->createMock( Registry::class );
 
 		// Count how many times register is called
-		$registry->expects( $this->exactly( 8 ) )
+		$registry->expects( $this->exactly( 9 ) )
 			->method( 'register' );
 
 		Provider::register( $registry );
@@ -79,6 +80,7 @@ class ProviderTest extends TestCase
 			'initializer:generate',
 			'mail:generate',
 			'queue:install',
+			'docker:install',
 			'scaffold:generate',
 		];
 
@@ -105,6 +107,7 @@ class ProviderTest extends TestCase
 			'Neuron\\Scaffolding\\Commands\\InitializerCommand',
 			'Neuron\\Scaffolding\\Commands\\EmailCommand',
 			'Neuron\\Scaffolding\\Commands\\Queue\\InstallCommand',
+			'Neuron\\Scaffolding\\Commands\\Docker\\InstallCommand',
 			'Neuron\\Scaffolding\\Commands\\ScaffoldCommand',
 		];
 

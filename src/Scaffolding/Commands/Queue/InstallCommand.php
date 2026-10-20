@@ -150,7 +150,7 @@ class InstallCommand extends Command
 		$this->output->info( "  dispatch(new MyJob(), ['data' => 'value']);" );
 		$this->output->write( "\n" );
 
-		$this->output->info( "For more information, see: vendor/neuron-php/jobs/QUEUE.md" );
+		$this->output->info( "For more information, see: vendor/neuron-php/jobs/readme.md" );
 
 		return 0;
 	}

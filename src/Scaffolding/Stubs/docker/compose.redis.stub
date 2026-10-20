@@ -1,0 +1,15 @@
+
+  # config/neuron.yaml:  queue: { driver: redis, redis: { url: "redis://redis:6379/0" } }
+  # AOF is on so queued jobs survive a Redis restart.
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
