@@ -1,4 +1,4 @@
-## 0.8.15
+## 0.8.15 2026-10-20
 
 * `docker:install` comments and output describe `stop_signal: SIGTERM` as
   defence in depth now that neuron-php/jobs 0.2.18 stops on the base image's
