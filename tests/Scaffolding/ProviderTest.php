@@ -12,19 +12,25 @@ class ProviderTest extends TestCase
 	{
 		$registry = $this->createMock( Registry::class );
 
+		$expected = [
+			[ 'controller:generate', 'Neuron\\Scaffolding\\Commands\\ControllerCommand' ],
+			[ 'event:generate', 'Neuron\\Scaffolding\\Commands\\EventCommand' ],
+			[ 'listener:generate', 'Neuron\\Scaffolding\\Commands\\ListenerCommand' ],
+			[ 'job:generate', 'Neuron\\Scaffolding\\Commands\\JobCommand' ],
+			[ 'initializer:generate', 'Neuron\\Scaffolding\\Commands\\InitializerCommand' ],
+			[ 'mail:generate', 'Neuron\\Scaffolding\\Commands\\EmailCommand' ],
+			[ 'queue:install', 'Neuron\\Scaffolding\\Commands\\Queue\\InstallCommand' ],
+			[ 'docker:install', 'Neuron\\Scaffolding\\Commands\\Docker\\InstallCommand' ],
+			[ 'scaffold:generate', 'Neuron\\Scaffolding\\Commands\\ScaffoldCommand' ]
+		];
+		$call = 0;
+
 		$registry->expects( $this->exactly( 9 ) )
 			->method( 'register' )
-			->withConsecutive(
-				['controller:generate', 'Neuron\\Scaffolding\\Commands\\ControllerCommand'],
-				['event:generate', 'Neuron\\Scaffolding\\Commands\\EventCommand'],
-				['listener:generate', 'Neuron\\Scaffolding\\Commands\\ListenerCommand'],
-				['job:generate', 'Neuron\\Scaffolding\\Commands\\JobCommand'],
-				['initializer:generate', 'Neuron\\Scaffolding\\Commands\\InitializerCommand'],
-				['mail:generate', 'Neuron\\Scaffolding\\Commands\\EmailCommand'],
-				['queue:install', 'Neuron\\Scaffolding\\Commands\\Queue\\InstallCommand'],
-				['docker:install', 'Neuron\\Scaffolding\\Commands\\Docker\\InstallCommand'],
-				['scaffold:generate', 'Neuron\\Scaffolding\\Commands\\ScaffoldCommand']
-			);
+			->willReturnCallback( function( string $name, string $class ) use ( &$call, $expected ) {
+				$this->assertSame( $expected[ $call ], [ $name, $class ] );
+				$call++;
+			} );
 
 		Provider::register( $registry );
 	}
